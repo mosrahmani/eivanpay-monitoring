@@ -1,0 +1,37 @@
+name: Lint and Validate
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Check YAML syntax
+      run: |
+        find . -name "*.yml" -o -name "*.yaml" | xargs -I {} sh -c 'python3 -c "import yaml; yaml.safe_load(open(\"{}\"))" || exit 1'
+    
+    - name: Check JSON syntax
+      run: |
+        find . -name "*.json" | xargs -I {} sh -c 'python3 -m json.tool {} > /dev/null || exit 1'
+    
+    - name: Check shell scripts
+      run: |
+        find . -name "*.sh" -exec shellcheck {} \;
+    
+    - name: Validate Docker Compose
+      run: |
+        docker-compose config > /dev/null
+
+
+
+
+
+
+

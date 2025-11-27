@@ -1,0 +1,41 @@
+groups:
+  - name: webhook_alerts
+    interval: 30s
+    rules:
+      # Telegram Webhook Down
+      - alert: TelegramWebhookDown
+        expr: up{job="telegram-webhook"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Telegram webhook is down"
+          description: "Telegram webhook service is not responding - CRITICAL: No alert notifications to Telegram!"
+
+      # Telegram Webhook High Error Rate
+      - alert: TelegramWebhookHighErrorRate
+        expr: rate(telegram_webhook_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Telegram webhook high error rate"
+          description: "Telegram webhook error rate is above 10% - alerts may not be delivered"
+
+      # Telegram Webhook High Latency
+      - alert: TelegramWebhookHighLatency
+        expr: histogram_quantile(0.95, rate(telegram_webhook_request_duration_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Telegram webhook high latency"
+          description: "95th percentile latency for Telegram webhook is above 5 seconds"
+
+
+
+
+
+
+
+

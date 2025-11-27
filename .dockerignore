@@ -1,0 +1,50 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+!README.md
+
+# Scripts (keep only necessary ones)
+scripts/*.sh
+!scripts/setup-telegram.sh
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+
+# Data directories (will be volumes)
+prometheus_data/
+grafana_data/
+alertmanager_data/
+
+
+
+
+
+
+
+

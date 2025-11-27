@@ -1,0 +1,212 @@
+{
+  "dashboard": {
+    "title": "Eivan Pay - Business Metrics",
+    "tags": ["business", "financial", "eivan-pay"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 0,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Loan Requests by Status",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(eivan_pay_loan_requests_total{status=\"waiting_for_inquiry\"})",
+            "legendFormat": "Waiting for Inquiry"
+          },
+          {
+            "expr": "sum(eivan_pay_loan_requests_total{status=\"waiting_for_approve\"})",
+            "legendFormat": "Waiting for Approve"
+          },
+          {
+            "expr": "sum(eivan_pay_loan_requests_total{status=\"established\"})",
+            "legendFormat": "Established"
+          },
+          {
+            "expr": "sum(eivan_pay_loan_requests_total{status=\"settled\"})",
+            "legendFormat": "Settled"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Total Loan Amount",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(eivan_pay_loans_total_amount)",
+            "legendFormat": "Total Loans"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "unit": "currencyIRR",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "green"},
+                {"value": 1000000000, "color": "yellow"},
+                {"value": 5000000000, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Payment Success Rate",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "(sum(rate(eivan_pay_payments_total{status=\"success\"}[5m])) / sum(rate(eivan_pay_payments_total[5m]))) * 100",
+            "legendFormat": "Success Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "red"},
+                {"value": 90, "color": "yellow"},
+                {"value": 95, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Active Wallets",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(eivan_pay_wallets_total{status=\"active\"})",
+            "legendFormat": "Active Wallets"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Loan Requests Over Time",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "rate(eivan_pay_loan_requests_total[5m])",
+            "legendFormat": "{{status}}"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Payment Transactions Over Time",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "rate(eivan_pay_payments_total[5m])",
+            "legendFormat": "{{status}}"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Settlement Status",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "sum(eivan_pay_settlements_total) by (status)",
+            "legendFormat": "{{status}}"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Credit Check Results",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 16},
+        "targets": [
+          {
+            "expr": "sum(eivan_pay_credit_checks_total) by (grade)",
+            "legendFormat": "Grade {{grade}}"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Wallet Transactions by Type",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 16, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(eivan_pay_wallet_transactions_total[5m])",
+            "legendFormat": "{{type}}"
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Total Wallet Balance",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "sum(eivan_pay_wallet_balance_total)",
+            "legendFormat": "Total Balance"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "unit": "currencyIRR"
+          }
+        }
+      },
+      {
+        "id": 11,
+        "title": "Failed Operations Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 6, "y": 24},
+        "targets": [
+          {
+            "expr": "rate(eivan_pay_loan_requests_total{status=\"failed\"}[5m])",
+            "legendFormat": "Failed Loan Requests"
+          },
+          {
+            "expr": "rate(eivan_pay_payments_total{status=\"failed\"}[5m])",
+            "legendFormat": "Failed Payments"
+          },
+          {
+            "expr": "rate(eivan_pay_wallet_transactions_total{status=\"failed\"}[5m])",
+            "legendFormat": "Failed Wallet Transactions"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+
+
+
+
+
+
+

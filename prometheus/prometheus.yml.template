@@ -1,0 +1,93 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'eivan-pay'
+    environment: 'production'
+
+# Alertmanager configuration (optional - uncomment if using Alertmanager)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - alertmanager:9093
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "rules/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter - System Metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          instance: 'monitoring-server'
+
+  # cAdvisor - Container Metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          instance: 'monitoring-server'
+
+  # PostgreSQL Exporter
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          instance: 'eivan-pay-database'
+          service: 'postgresql'
+
+  # Redis Exporter
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          instance: 'eivan-pay-cache'
+          service: 'redis'
+
+  # Eivan Pay API - Health Check Metrics
+  # Note: You need to expose metrics endpoint in your NestJS app
+  # For now, we'll monitor health endpoint
+  - job_name: 'eivan-pay-api'
+    metrics_path: '/health'
+    static_configs:
+      - targets: ['${API_HOST}:${API_PORT}']
+        labels:
+          instance: 'eivan-pay-api'
+          service: 'api'
+    # If you add /metrics endpoint later, change metrics_path to '/metrics'
+
+  # Backoffice Gateway - Health Check
+  - job_name: 'backoffice-gateway'
+    metrics_path: '/health'
+    static_configs:
+      - targets: ['${GATEWAY_HOST}:${GATEWAY_PORT}']
+        labels:
+          instance: 'backoffice-gateway'
+          service: 'gateway'
+
+  # Nginx - Stub Status (if accessible)
+  - job_name: 'nginx'
+    metrics_path: '/nginx-status'
+    static_configs:
+      - targets: ['${NGINX_HOST}:${NGINX_PORT}']
+        labels:
+          instance: 'nginx'
+          service: 'nginx'
+    # Note: Nginx stub_status module must be enabled
+
+
+
+
+
+
+
+

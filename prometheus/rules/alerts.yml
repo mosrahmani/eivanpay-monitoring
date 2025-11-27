@@ -1,0 +1,279 @@
+groups:
+  - name: infrastructure_alerts
+    interval: 30s
+    rules:
+      # High CPU Usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is above 80% for more than 5 minutes on {{ $labels.instance }}"
+
+      # High Memory Usage
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is above 85% on {{ $labels.instance }}"
+
+      # Disk Space Low
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is below 15% on {{ $labels.instance }}"
+
+      # Service Down
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} on {{ $labels.instance }} has been down for more than 1 minute"
+
+      # Container High Memory Usage
+      - alert: ContainerHighMemory
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container high memory usage"
+          description: "Container {{ $labels.name }} is using more than 90% of its memory limit"
+
+  - name: database_alerts
+    interval: 30s
+    rules:
+      # PostgreSQL Connection Issues
+      - alert: PostgreSQLDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database is not responding - CRITICAL for financial operations"
+
+      # High Database Connections
+      - alert: HighDatabaseConnections
+        expr: pg_stat_database_numbackends > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High database connections"
+          description: "Database has more than 80 active connections - may impact performance"
+
+      # Slow Database Queries
+      - alert: SlowDatabaseQueries
+        expr: rate(pg_stat_statements_mean_exec_time_seconds[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow database queries detected"
+          description: "Average query execution time is above 1 second on {{ $labels.instance }}"
+
+      # Database Connection Pool Exhausted
+      - alert: DatabaseConnectionPoolExhausted
+        expr: (pg_stat_database_numbackends / pg_settings_max_connections) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Database connection pool is above 90% capacity on {{ $labels.instance }}"
+
+      # High Database Disk Usage
+      - alert: HighDatabaseDiskUsage
+        expr: (pg_database_size_bytes / 1024 / 1024 / 1024) > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High database disk usage"
+          description: "Database size is above 50GB on {{ $labels.instance }}"
+
+  - name: cache_alerts
+    interval: 30s
+    rules:
+      # Redis Connection Issues
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache is not responding - CRITICAL for OTP and rate limiting"
+
+      # Redis High Memory Usage
+      - alert: RedisHighMemory
+        expr: (redis_memory_used_bytes / redis_memory_max_bytes) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis high memory usage"
+          description: "Redis memory usage is above 90% on {{ $labels.instance }}"
+
+      # Redis Connection Issues
+      - alert: RedisConnectionIssues
+        expr: rate(redis_connected_clients[5m]) < 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis connection issues"
+          description: "Redis has low or no active connections on {{ $labels.instance }}"
+
+  - name: application_alerts
+    interval: 30s
+    rules:
+      # API Service Down
+      - alert: APIServiceDown
+        expr: up{job="eivan-pay-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Eivan Pay API is down"
+          description: "Core API service is not responding - CRITICAL for all operations"
+
+      # Gateway Service Down
+      - alert: GatewayServiceDown
+        expr: up{job="backoffice-gateway"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backoffice Gateway is down"
+          description: "Backoffice Gateway service is not responding"
+
+      # High Error Rate
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is above 10% for service {{ $labels.job }}"
+
+      # High Response Time
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time"
+          description: "95th percentile response time is above 2 seconds for {{ $labels.job }}"
+
+  - name: business_alerts
+    interval: 30s
+    rules:
+      # High Failed Loan Requests
+      - alert: HighFailedLoanRequests
+        expr: rate(eivan_pay_loan_requests_total{status="failed"}[5m]) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High rate of failed loan requests"
+          description: "More than 5% of loan requests are failing - investigate immediately"
+
+      # Payment Processing Issues
+      - alert: PaymentProcessingIssues
+        expr: rate(eivan_pay_payments_total{status="failed"}[5m]) > 0.02
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Payment processing issues detected"
+          description: "More than 2% of payments are failing - CRITICAL for financial operations"
+
+      # Settlement Processing Delayed
+      - alert: SettlementProcessingDelayed
+        expr: eivan_pay_settlements_pending > 100
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Settlement processing delayed"
+          description: "More than 100 settlements are pending for more than 30 minutes"
+
+      # Credit Check Service Issues
+      - alert: CreditCheckServiceIssues
+        expr: rate(eivan_pay_credit_checks_total{status="failed"}[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Credit check service issues"
+          description: "More than 10% of credit checks are failing"
+
+      # Wallet Balance Anomaly
+      - alert: WalletBalanceAnomaly
+        expr: eivan_pay_wallet_balance_total < 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Wallet balance anomaly detected"
+          description: "Total wallet balance is negative - CRITICAL financial issue"
+
+      # High Transaction Failure Rate
+      - alert: HighTransactionFailureRate
+        expr: rate(eivan_pay_wallet_transactions_total{status="failed"}[5m]) / rate(eivan_pay_wallet_transactions_total[5m]) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High wallet transaction failure rate"
+          description: "More than 5% of wallet transactions are failing"
+
+  - name: security_alerts
+    interval: 30s
+    rules:
+      # High Rate of Failed Authentication
+      - alert: HighFailedAuthenticationRate
+        expr: rate(eivan_pay_auth_attempts_total{status="failed"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High rate of failed authentication attempts"
+          description: "More than 10 failed authentication attempts per second - possible attack"
+
+      # Rate Limiting Triggered
+      - alert: RateLimitingTriggered
+        expr: rate(eivan_pay_rate_limit_hits_total[5m]) > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High rate limiting activity"
+          description: "Rate limiting is being triggered frequently - possible DDoS or abuse"
+
+      # Suspicious Activity Detected
+      - alert: SuspiciousActivityDetected
+        expr: rate(eivan_pay_security_events_total{type="suspicious"}[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Suspicious activity detected"
+          description: "Multiple security events detected - review immediately"
+

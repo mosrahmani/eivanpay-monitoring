@@ -1,0 +1,42 @@
+{{ define "telegram.default" }}
+🚨 <b>{{ .GroupLabels.alertname }}</b>
+
+Status: {{ .Status }}
+Severity: {{ .CommonLabels.severity }}
+
+{{ range .Alerts }}
+Alert: {{ .Annotations.summary }}
+Description: {{ .Annotations.description }}
+Instance: {{ .Labels.instance }}
+Service: {{ .Labels.job }}
+Started: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+{{ if .EndsAt }}
+Ended: {{ .EndsAt.Format "2006-01-02 15:04:05" }}
+{{ end }}
+{{ end }}
+{{ end }}
+
+{{ define "telegram.critical" }}
+🔴 <b>CRITICAL ALERT</b>
+
+Alert: {{ .GroupLabels.alertname }}
+Status: {{ .Status }}
+
+{{ range .Alerts }}
+Summary: {{ .Annotations.summary }}
+Description: {{ .Annotations.description }}
+Instance: {{ .Labels.instance }}
+Service: {{ .Labels.job }}
+Time: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+{{ end }}
+
+⚠️ Immediate action required!
+{{ end }}
+
+
+
+
+
+
+
+

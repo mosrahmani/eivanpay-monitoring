@@ -1,0 +1,81 @@
+groups:
+  - name: monitoring_stack_alerts
+    interval: 30s
+    rules:
+      # Prometheus Down
+      - alert: PrometheusDown
+        expr: up{job="prometheus"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus is down"
+          description: "Prometheus monitoring service is not responding - CRITICAL: No metrics collection!"
+
+      # Alertmanager Down
+      - alert: AlertmanagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alertmanager is down"
+          description: "Alertmanager service is not responding - CRITICAL: No alert notifications!"
+
+      # Prometheus High Memory Usage
+      - alert: PrometheusHighMemory
+        expr: process_resident_memory_bytes{job="prometheus"} > 3 * 1024 * 1024 * 1024
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus high memory usage"
+          description: "Prometheus is using more than 3GB of memory"
+
+      # Prometheus High CPU Usage
+      - alert: PrometheusHighCPU
+        expr: rate(process_cpu_seconds_total{job="prometheus"}[5m]) > 1.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus high CPU usage"
+          description: "Prometheus CPU usage is above 150%"
+
+      # Prometheus Storage Issues
+      - alert: PrometheusStorageFull
+        expr: prometheus_tsdb_storage_blocks_bytes / prometheus_tsdb_head_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus storage nearly full"
+          description: "Prometheus storage is above 90% capacity"
+
+      # Prometheus Target Scraping Issues
+      - alert: PrometheusTargetDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus target {{ $labels.job }} is down"
+          description: "Target {{ $labels.job }} on {{ $labels.instance }} has been down for more than 5 minutes"
+
+      # High Scrape Duration
+      - alert: PrometheusHighScrapeDuration
+        expr: prometheus_target_interval_length_seconds{quantile="0.99"} > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus high scrape duration"
+          description: "99th percentile scrape duration is above 30 seconds"
+
+
+
+
+
+
+
+
