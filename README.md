@@ -315,6 +315,11 @@ GATEWAY_HOST=your_gateway_host             # e.g., gateway-server.internal or IP
 GATEWAY_PORT=3003
 NGINX_HOST=your_nginx_host                 # e.g., nginx-server.internal or IP
 NGINX_PORT=80
+
+# Prometheus API Key (REQUIRED for scraping application metrics)
+# This key must match the one configured in your application .env files
+# Minimum 32 characters recommended for security
+PROMETHEUS_API_KEY=your_secure_prometheus_api_key_here_min_32_characters
 ```
 
 **Important Notes:**
@@ -862,6 +867,7 @@ Required variables:
 - `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`
 - `GRAFANA_ROOT_URL`, `PROMETHEUS_EXTERNAL_URL`, `ALERTMANAGER_EXTERNAL_URL`
 - `API_HOST`, `GATEWAY_HOST`, `NGINX_HOST` (for Prometheus scraping)
+- `PROMETHEUS_API_KEY` (for authenticating Prometheus scraping requests - min 32 chars)
 
 ### SSL Certificates
 

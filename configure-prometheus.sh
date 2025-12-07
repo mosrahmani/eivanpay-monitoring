@@ -4,8 +4,11 @@
 
 set -e
 
-# Load common functions
+# Get project root directory (this script is in the root)
+# Set SCRIPT_DIR before sourcing common.sh so it uses the correct path
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Load common functions
 source "$SCRIPT_DIR/scripts/lib/common.sh"
 
 if ! check_env_file; then

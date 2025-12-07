@@ -5,8 +5,9 @@
 set -e
 
 # Load common functions
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/lib/common.sh"
+# Set SCRIPT_DIR to project root (this script is in scripts/, so go up one level)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$SCRIPT_DIR/scripts/lib/common.sh"
 
 BACKUP_DIR="$SCRIPT_DIR/backups/grafana"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)

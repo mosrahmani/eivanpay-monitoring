@@ -5,8 +5,9 @@
 set -e
 
 # Load common functions
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/lib/common.sh"
+# Set SCRIPT_DIR to project root (this script is in scripts/, so go up one level)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$SCRIPT_DIR/scripts/lib/common.sh"
 
 log_step "Validating Environment Variables"
 
@@ -46,6 +47,7 @@ OPTIONAL_VARS=(
     "TELEGRAM_CHAT_ID"
     "API_HOST"
     "GATEWAY_HOST"
+    "PROMETHEUS_API_KEY"
 )
 
 echo ""
@@ -69,6 +71,21 @@ if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
     else
         log_error "Telegram bot connection failed"
         ERRORS=$((ERRORS + 1))
+    fi
+fi
+
+# Validate PROMETHEUS_API_KEY if API scraping is configured
+if [ -n "$API_HOST" ] && [ "$API_HOST" != "your_api_host" ]; then
+    echo ""
+    if [ -z "$PROMETHEUS_API_KEY" ] || [[ "$PROMETHEUS_API_KEY" == *"your_"* ]] || [[ "$PROMETHEUS_API_KEY" == *"YOUR_"* ]]; then
+        log_warning "PROMETHEUS_API_KEY is not set or using default value"
+        log_info "This is required if your API endpoints require authentication for metrics scraping"
+        WARNINGS=$((WARNINGS + 1))
+    elif [ ${#PROMETHEUS_API_KEY} -lt 32 ]; then
+        log_warning "PROMETHEUS_API_KEY is less than 32 characters (recommended minimum for security)"
+        WARNINGS=$((WARNINGS + 1))
+    else
+        log_success "PROMETHEUS_API_KEY is configured (${#PROMETHEUS_API_KEY} characters)"
     fi
 fi
 

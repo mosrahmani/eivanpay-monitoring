@@ -10,8 +10,13 @@ readonly YELLOW='\033[1;33m'
 readonly RED='\033[0;31m'
 readonly NC='\033[0m' # No Color
 
-# Script directory
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Script directory - point to project root
+# If SCRIPT_DIR is already set (e.g., from configure-prometheus.sh), use it
+# Otherwise, calculate from this file's location (scripts/lib/common.sh -> project root)
+if [ -z "${SCRIPT_DIR:-}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+fi
+readonly SCRIPT_DIR
 
 # Logging functions
 log_info() {
