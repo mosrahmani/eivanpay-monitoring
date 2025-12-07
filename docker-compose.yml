@@ -1,14 +1,14 @@
-version: '3.8'
-
+# Docker Compose v2 format (version field is obsolete)
 services:
   # Nginx Reverse Proxy - Production Access
+  # Direct access on ports 80/443 for subdomain monitoring.eivanpay.com
   nginx:
     image: nginx:1.25-alpine
     container_name: monitoring-nginx
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - "8080:80"     # HTTP - Internal port (routed by host nginx)
+      - "8445:443"    # HTTPS - Internal port (routed by host nginx) - changed from 8443 to avoid conflict with GitLab SSH
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
@@ -18,14 +18,15 @@ services:
     depends_on:
       - grafana
       - prometheus
-      - alertmanager
+      # - alertmanager  # Temporarily disabled
     networks:
       - monitoring-network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
     security_opt:
       - no-new-privileges:true
     labels:
@@ -42,7 +43,7 @@ services:
 
   # Prometheus - Metrics Collection
   prometheus:
-    image: prom/prometheus:v2.48.0
+    image: prom/prometheus:latest
     container_name: prometheus
     restart: unless-stopped
     user: "nobody"
@@ -74,11 +75,11 @@ services:
     networks:
       - monitoring-network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/prometheus/-/healthy || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 60s
     deploy:
       resources:
         limits:
@@ -181,9 +182,14 @@ services:
       timeout: 10s
       retries: 3
 
-  # cAdvisor - Container Metrics
+  # cAdvisor - Container Metrics (OPTIONAL)
+  # cAdvisor is optional and disabled by default
+  # To enable: docker compose --profile cadvisor up -d
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.47.0
+    profiles:
+      - cadvisor  # Only starts with --profile cadvisor flag
+    # Using Docker Hub (google/cadvisor)
+    image: google/cadvisor:v0.47.0
     container_name: cadvisor
     restart: unless-stopped
     # Security: Internal network only
@@ -237,131 +243,131 @@ services:
       timeout: 10s
       retries: 3
 
-  # Redis Exporter - Cache Metrics
-  redis-exporter:
-    image: oliver006/redis_exporter:v1.55.0
-    container_name: redis-exporter
-    restart: unless-stopped
-    # Security: Internal network only
-    expose:
-      - "9121"
-    environment:
-      - REDIS_ADDR=${REDIS_HOST:-your_redis_host}:${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-    security_opt:
-      - no-new-privileges:true
-    labels:
-      - "com.eivan-pay.service=monitoring"
-      - "com.eivan-pay.component=redis-exporter"
-    networks:
-      - monitoring-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9121/metrics"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+  # Redis Exporter - Cache Metrics (Temporarily disabled)
+  # redis-exporter:
+  #   image: oliver006/redis_exporter:v1.55.0
+  #   container_name: redis-exporter
+  #   restart: unless-stopped
+  #   # Security: Internal network only
+  #   expose:
+  #     - "9121"
+  #   environment:
+  #     - REDIS_ADDR=${REDIS_HOST:-your_redis_host}:${REDIS_PORT:-6379}
+  #     - REDIS_PASSWORD=${REDIS_PASSWORD}
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   labels:
+  #     - "com.eivan-pay.service=monitoring"
+  #     - "com.eivan-pay.component=redis-exporter"
+  #   networks:
+  #     - monitoring-network
+  #   healthcheck:
+  #     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9121/metrics"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
 
-  # Alertmanager - Alert Management
-  alertmanager:
-    image: prom/alertmanager:v0.26.0
-    container_name: alertmanager
-    restart: unless-stopped
-    user: "nobody"
-    # Production: No public ports, access via Nginx only
-    ports: []
-    security_opt:
-      - no-new-privileges:true
-    read_only: true
-    tmpfs:
-      - /tmp
-      - /var/run
-    labels:
-      - "com.eivan-pay.service=monitoring"
-      - "com.eivan-pay.component=alertmanager"
-    env_file:
-      - .env
-    volumes:
-      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
-      - ./alertmanager/templates:/etc/alertmanager/templates:ro
-      - alertmanager_data:/alertmanager
-    command:
-      - '--config.file=/etc/alertmanager/alertmanager.yml'
-      - '--storage.path=/alertmanager'
-      - '--web.external-url=${ALERTMANAGER_EXTERNAL_URL:-https://monitoring.example.com/alertmanager}'
-      - '--cluster.listen-address='
-    depends_on:
-      - prometheus
-      - telegram-webhook
-    networks:
-      - monitoring-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.1'
-          memory: 128M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+  # Alertmanager - Alert Management (Temporarily disabled)
+  # alertmanager:
+  #   image: prom/alertmanager:latest
+  #   container_name: alertmanager
+  #   restart: unless-stopped
+  #   user: "nobody"
+  #   # Production: No public ports, access via Nginx only
+  #   ports: []
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   read_only: true
+  #   tmpfs:
+  #     - /tmp
+  #     - /var/run
+  #   labels:
+  #     - "com.eivan-pay.service=monitoring"
+  #     - "com.eivan-pay.component=alertmanager"
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+  #     - ./alertmanager/templates:/etc/alertmanager/templates:ro
+  #     - alertmanager_data:/alertmanager
+  #   command:
+  #     - '--config.file=/etc/alertmanager/alertmanager.yml'
+  #     - '--storage.path=/alertmanager'
+  #     - '--web.external-url=${ALERTMANAGER_EXTERNAL_URL:-https://monitoring.example.com/alertmanager}'
+  #     - '--cluster.listen-address='
+  #   depends_on:
+  #     - prometheus
+  #     - telegram-webhook
+  #   networks:
+  #     - monitoring-network
+  #   healthcheck:
+  #     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 10s
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.5'
+  #         memory: 512M
+  #       reservations:
+  #         cpus: '0.1'
+  #         memory: 128M
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
 
-  # Telegram Webhook - Receives alerts and forwards to Telegram
-  telegram-webhook:
-    build:
-      context: ./alertmanager
-      dockerfile: Dockerfile
-    container_name: telegram-webhook
-    restart: unless-stopped
-    # User is set in Dockerfile (webhook:1000)
-    # Security: Internal network only
-    expose:
-      - "8080"
-      - "9091"  # Prometheus metrics port
-    security_opt:
-      - no-new-privileges:true
-    read_only: true
-    tmpfs:
-      - /tmp
-    environment:
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
-      - PORT=8080
-      - METRICS_PORT=9091
-      - MAX_RETRIES=3
-      - RATE_LIMIT_PER_MINUTE=20
-    labels:
-      - "com.eivan-pay.service=monitoring"
-      - "com.eivan-pay.component=telegram-webhook"
-    networks:
-      - monitoring-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-    deploy:
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 256M
-        reservations:
-          cpus: '0.05'
-          memory: 64M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+  # Telegram Webhook - Receives alerts and forwards to Telegram (Temporarily disabled)
+  # telegram-webhook:
+  #   build:
+  #     context: ./alertmanager
+  #     dockerfile: Dockerfile
+  #   container_name: telegram-webhook
+  #   restart: unless-stopped
+  #   # User is set in Dockerfile (webhook:1000)
+  #   # Security: Internal network only
+  #   expose:
+  #     - "8080"
+  #     - "9091"  # Prometheus metrics port
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   read_only: true
+  #   tmpfs:
+  #     - /tmp
+  #   environment:
+  #     - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+  #     - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+  #     - PORT=8080
+  #     - METRICS_PORT=9091
+  #     - MAX_RETRIES=3
+  #     - RATE_LIMIT_PER_MINUTE=20
+  #   labels:
+  #     - "com.eivan-pay.service=monitoring"
+  #     - "com.eivan-pay.component=telegram-webhook"
+  #   networks:
+  #     - monitoring-network
+  #   healthcheck:
+  #     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 5s
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.25'
+  #         memory: 256M
+  #       reservations:
+  #         cpus: '0.05'
+  #         memory: 64M
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
 
 networks:
   monitoring-network:

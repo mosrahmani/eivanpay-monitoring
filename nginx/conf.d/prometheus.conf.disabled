@@ -1,0 +1,12 @@
+# Prometheus Reverse Proxy Configuration
+# Access: https://monitoring.eivanpay.com/prometheus
+# Note: Prometheus locations are now included in grafana.conf to avoid conflicting server blocks
+# This file is kept for reference but locations are merged into the main server block
+
+
+
+
+
+
+
+

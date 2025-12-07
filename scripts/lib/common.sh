@@ -91,11 +91,19 @@ check_env_file() {
     return 0
 }
 
-# Load environment variables
+# Load environment variables safely
+# This function safely loads .env file by disabling glob expansion
+# to prevent special characters (like *, ?, etc.) from being interpreted
 load_env() {
     if [ -f "$SCRIPT_DIR/.env" ]; then
         set -a
+        # Disable glob expansion to prevent * and other special chars from being interpreted
+        set -f
+        # Source the .env file
+        # shellcheck source=/dev/null
         source "$SCRIPT_DIR/.env"
+        # Re-enable glob expansion
+        set +f
         set +a
     fi
 }

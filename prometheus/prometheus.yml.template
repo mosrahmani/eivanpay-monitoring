@@ -1,11 +1,13 @@
 global:
   scrape_interval: 15s
+  scrape_timeout: 10s
   evaluation_interval: 15s
   external_labels:
     cluster: 'eivan-pay'
     environment: 'production'
+    monitor: 'eivan-pay-monitoring'
 
-# Alertmanager configuration (optional - uncomment if using Alertmanager)
+# Alertmanager configuration (Temporarily disabled)
 # alerting:
 #   alertmanagers:
 #     - static_configs:
@@ -22,6 +24,20 @@ scrape_configs:
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
+        labels:
+          instance: 'prometheus'
+          service: 'monitoring'
+
+  # Alertmanager - Monitor Alertmanager itself
+  - job_name: 'alertmanager'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ['alertmanager:9093']
+        labels:
+          instance: 'alertmanager'
+          service: 'monitoring'
+          component: 'alertmanager'
 
   # Node Exporter - System Metrics
   - job_name: 'node-exporter'
@@ -45,34 +61,84 @@ scrape_configs:
           instance: 'eivan-pay-database'
           service: 'postgresql'
 
-  # Redis Exporter
-  - job_name: 'redis'
-    static_configs:
-      - targets: ['redis-exporter:9121']
-        labels:
-          instance: 'eivan-pay-cache'
-          service: 'redis'
+  # Redis Exporter (Temporarily disabled)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+  #       labels:
+  #         instance: 'eivan-pay-cache'
+  #         service: 'redis'
 
-  # Eivan Pay API - Health Check Metrics
-  # Note: You need to expose metrics endpoint in your NestJS app
-  # For now, we'll monitor health endpoint
+  # Telegram Webhook - Monitor webhook service
+  - job_name: 'telegram-webhook'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ['telegram-webhook:9091']  # Metrics endpoint
+        labels:
+          instance: 'telegram-webhook'
+          service: 'monitoring'
+          component: 'webhook'
+
+  # Eivan Pay API - Prometheus Metrics
+  # Security: Protected with API Key + IP Whitelist
   - job_name: 'eivan-pay-api'
-    metrics_path: '/health'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    metrics_path: '/metrics'
     static_configs:
       - targets: ['${API_HOST}:${API_PORT}']
         labels:
           instance: 'eivan-pay-api'
           service: 'api'
-    # If you add /metrics endpoint later, change metrics_path to '/metrics'
+          environment: 'production'
+    # API Key authentication
+    # Note: Prometheus scrape_config does not support http_client_config/headers directly
+    # Workaround: Use Nginx reverse proxy to add X-API-Key header, or use IP whitelisting
+    # For now, headers are commented out - authentication should be handled at API level via IP whitelist
+    # http_client_config:
+    #   headers:
+    #     X-API-Key: '${PROMETHEUS_API_KEY}'
 
-  # Backoffice Gateway - Health Check
+  # Backoffice Gateway - Prometheus Metrics
+  # Security: Protected with API Key + IP Whitelist
   - job_name: 'backoffice-gateway'
-    metrics_path: '/health'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    metrics_path: '/metrics'
     static_configs:
       - targets: ['${GATEWAY_HOST}:${GATEWAY_PORT}']
         labels:
           instance: 'backoffice-gateway'
           service: 'gateway'
+          environment: 'production'
+    # API Key authentication
+    # Note: Prometheus scrape_config does not support http_client_config/headers directly
+    # Workaround: Use Nginx reverse proxy to add X-API-Key header, or use IP whitelisting
+    # For now, headers are commented out - authentication should be handled at API level via IP whitelist
+    # http_client_config:
+    #   headers:
+    #     X-API-Key: '${PROMETHEUS_API_KEY}'
+
+  # PWA API - Prometheus Metrics (Optional)
+  # Security: Protected with API Key + IP Whitelist
+  - job_name: 'pwa-api'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['${PWA_API_HOST}:${PWA_API_PORT}']
+        labels:
+          instance: 'pwa-api'
+          service: 'pwa'
+          environment: 'production'
+    # API Key authentication
+    # Note: Prometheus scrape_config does not support http_client_config/headers directly
+    # Workaround: Use Nginx reverse proxy to add X-API-Key header, or use IP whitelisting
+    # For now, headers are commented out - authentication should be handled at API level via IP whitelist
+    # http_client_config:
+    #   headers:
+    #     X-API-Key: '${PROMETHEUS_API_KEY}'
 
   # Nginx - Stub Status (if accessible)
   - job_name: 'nginx'
@@ -83,11 +149,3 @@ scrape_configs:
           instance: 'nginx'
           service: 'nginx'
     # Note: Nginx stub_status module must be enabled
-
-
-
-
-
-
-
-

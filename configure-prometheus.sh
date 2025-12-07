@@ -39,19 +39,26 @@ fi
 
 # Use envsubst if available, otherwise use sed
 if command_exists envsubst; then
-    log_info "Using envsubst to generate configuration..."
+    log_info "Using envsubst to generate configuration from template..."
+    # Export variables for envsubst
+    export API_HOST API_PORT GATEWAY_HOST GATEWAY_PORT NGINX_HOST NGINX_PORT
+    export PWA_API_HOST PWA_API_PORT PROMETHEUS_API_KEY
     envsubst < "$SCRIPT_DIR/prometheus/prometheus.yml.template" > "$SCRIPT_DIR/prometheus/prometheus.yml"
 else
-    log_info "Using sed to update configuration..."
-    # Backup original
-    cp "$SCRIPT_DIR/prometheus/prometheus.yml" "$SCRIPT_DIR/prometheus/prometheus.yml.bak"
+    log_info "Using sed to generate configuration from template..."
+    # Copy template to prometheus.yml
+    cp "$SCRIPT_DIR/prometheus/prometheus.yml.template" "$SCRIPT_DIR/prometheus/prometheus.yml"
     
-    # Replace placeholders
-    sed -i.bak "s|your_api_host:3000|${API_HOST}:${API_PORT}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
-    sed -i.bak "s|your_gateway_host:3003|${GATEWAY_HOST}:${GATEWAY_PORT}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
-    sed -i.bak "s|your_nginx_host:80|${NGINX_HOST}:${NGINX_PORT}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
-    sed -i.bak "s|your_pwa_api_host:3002|${PWA_API_HOST}:${PWA_API_PORT}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
-    sed -i.bak "s|your_prometheus_api_key_here|${PROMETHEUS_API_KEY}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
+    # Replace environment variables in template
+    sed -i.bak "s|\${API_HOST}|${API_HOST}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
+    sed -i.bak "s|\${API_PORT}|${API_PORT}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
+    sed -i.bak "s|\${GATEWAY_HOST}|${GATEWAY_HOST}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
+    sed -i.bak "s|\${GATEWAY_PORT}|${GATEWAY_PORT}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
+    sed -i.bak "s|\${NGINX_HOST}|${NGINX_HOST}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
+    sed -i.bak "s|\${NGINX_PORT}|${NGINX_PORT}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
+    sed -i.bak "s|\${PWA_API_HOST}|${PWA_API_HOST}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
+    sed -i.bak "s|\${PWA_API_PORT}|${PWA_API_PORT}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
+    sed -i.bak "s|\${PROMETHEUS_API_KEY}|${PROMETHEUS_API_KEY}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
     
     # Remove backup files
     rm -f "$SCRIPT_DIR/prometheus/prometheus.yml.bak"

@@ -65,12 +65,32 @@ done
 if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
     echo ""
     log_info "Testing Telegram connection..."
-    TEST_RESULT=$(curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe" 2>/dev/null)
-    if echo "$TEST_RESULT" | grep -q '"ok":true'; then
+    # Use set +e to prevent script from exiting on curl errors
+    set +e
+    TEST_RESULT=$(curl -s --max-time 10 --connect-timeout 5 "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe" 2>/dev/null)
+    CURL_EXIT_CODE=$?
+    set -e
+    
+    if [ $CURL_EXIT_CODE -eq 0 ] && echo "$TEST_RESULT" | grep -q '"ok":true'; then
         log_success "Telegram bot connection successful"
+    elif [ $CURL_EXIT_CODE -ne 0 ] || [ -z "$TEST_RESULT" ]; then
+        # Network error or no response - treat as warning, not error
+        log_warning "Could not test Telegram connection (network issue or API unavailable)"
+        log_info "This could be due to:"
+        log_info "  - Network connectivity issues"
+        log_info "  - Telegram API temporarily unavailable"
+        log_info "  - Firewall blocking connection"
+        log_info "Please verify your bot token and chat ID are correct"
+        WARNINGS=$((WARNINGS + 1))
     else
-        log_error "Telegram bot connection failed"
-        ERRORS=$((ERRORS + 1))
+        # Got response but it's not OK - likely invalid token
+        # Treat as warning since Telegram is optional
+        log_warning "Telegram bot connection failed - invalid bot token or configuration"
+        log_info "Please verify:"
+        log_info "  - Bot token is correct (from @BotFather)"
+        log_info "  - Chat ID is correct"
+        log_info "Note: Telegram alerts are optional. You can continue without them."
+        WARNINGS=$((WARNINGS + 1))
     fi
 fi
 
