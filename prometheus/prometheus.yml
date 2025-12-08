@@ -28,13 +28,17 @@ scrape_configs:
         labels:
           instance: 'monitoring-server'
 
-  # PostgreSQL Exporter - Database Metrics
-  - job_name: 'postgres'
+  # PostgreSQL Exporter - Database Metrics (External Server)
+  # Note: This exporter runs on the database server, not in this stack
+  - job_name: 'eivan-pay-postgresql'
     static_configs:
-      - targets: ['postgres-exporter:9187']
+      - targets: ['${POSTGRES_EXPORTER_ENDPOINT:-188.121.105.218:9187}']
         labels:
           instance: 'eivan-pay-database'
           service: 'postgresql'
+          environment: 'production'
+    scrape_interval: 30s
+    scrape_timeout: 10s
 
   # cAdvisor - Container Metrics (optional, enabled with --profile cadvisor)
   - job_name: 'cadvisor'
