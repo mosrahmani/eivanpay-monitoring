@@ -51,9 +51,9 @@ ALERT_USER=${ALERT_USER:-alertmanager}
 htpasswd -c "$SCRIPT_DIR/nginx/auth/alertmanager.htpasswd" "$ALERT_USER"
 log_success "Alertmanager authentication configured"
 
-# Set permissions
-chmod 600 "$SCRIPT_DIR/nginx/auth"/*.htpasswd
-chown root:root "$SCRIPT_DIR/nginx/auth"/*.htpasswd 2>/dev/null || true
+# Set permissions (644 so nginx can read them)
+chmod 644 "$SCRIPT_DIR/nginx/auth"/*.htpasswd
+chown $(whoami):$(whoami) "$SCRIPT_DIR/nginx/auth"/*.htpasswd 2>/dev/null || true
 
 echo ""
 print_header "✅ Authentication Setup Complete!"

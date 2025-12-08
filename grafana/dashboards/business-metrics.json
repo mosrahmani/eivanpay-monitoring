@@ -1,33 +1,58 @@
 {
-  "dashboard": {
-    "title": "Eivan Pay - Business Metrics",
-    "tags": ["business", "financial", "eivan-pay"],
-    "timezone": "browser",
-    "schemaVersion": 16,
-    "version": 0,
-    "refresh": "30s",
-    "panels": [
+  "id": null,
+  "uid": "business-metrics",
+  "title": "Eivan Pay - Business Metrics",
+  "tags": ["business", "financial", "eivan-pay"],
+  "timezone": "browser",
+  "schemaVersion": 16,
+  "version": 0,
+  "refresh": "30s",
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": ["10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+  },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
       {
         "id": 1,
         "title": "Loan Requests by Status",
         "type": "stat",
         "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "targets": [
           {
             "expr": "sum(eivan_pay_loan_requests_total{status=\"waiting_for_inquiry\"})",
-            "legendFormat": "Waiting for Inquiry"
+            "legendFormat": "Waiting for Inquiry",
+            "refId": "A"
           },
           {
             "expr": "sum(eivan_pay_loan_requests_total{status=\"waiting_for_approve\"})",
-            "legendFormat": "Waiting for Approve"
+            "legendFormat": "Waiting for Approve",
+            "refId": "B"
           },
           {
             "expr": "sum(eivan_pay_loan_requests_total{status=\"established\"})",
-            "legendFormat": "Established"
+            "legendFormat": "Established",
+            "refId": "C"
           },
           {
             "expr": "sum(eivan_pay_loan_requests_total{status=\"settled\"})",
-            "legendFormat": "Settled"
+            "legendFormat": "Settled",
+            "refId": "D"
           }
         ],
         "fieldConfig": {
@@ -42,10 +67,15 @@
         "title": "Total Loan Amount",
         "type": "stat",
         "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "targets": [
           {
             "expr": "sum(eivan_pay_loans_total_amount)",
-            "legendFormat": "Total Loans"
+            "legendFormat": "Total Loans",
+            "refId": "A"
           }
         ],
         "fieldConfig": {
@@ -68,10 +98,15 @@
         "title": "Payment Success Rate",
         "type": "stat",
         "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "targets": [
           {
             "expr": "(sum(rate(eivan_pay_payments_total{status=\"success\"}[5m])) / sum(rate(eivan_pay_payments_total[5m]))) * 100",
-            "legendFormat": "Success Rate %"
+            "legendFormat": "Success Rate %",
+            "refId": "A"
           }
         ],
         "fieldConfig": {
@@ -94,34 +129,49 @@
         "title": "Active Wallets",
         "type": "stat",
         "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "targets": [
           {
             "expr": "sum(eivan_pay_wallets_total{status=\"active\"})",
-            "legendFormat": "Active Wallets"
+            "legendFormat": "Active Wallets",
+            "refId": "A"
           }
         ]
       },
       {
         "id": 5,
         "title": "Loan Requests Over Time",
-        "type": "graph",
+        "type": "timeseries",
         "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "targets": [
           {
             "expr": "rate(eivan_pay_loan_requests_total[5m])",
-            "legendFormat": "{{status}}"
+            "legendFormat": "{{status}}",
+            "refId": "A"
           }
         ]
       },
       {
         "id": 6,
         "title": "Payment Transactions Over Time",
-        "type": "graph",
+        "type": "timeseries",
         "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "targets": [
           {
             "expr": "rate(eivan_pay_payments_total[5m])",
-            "legendFormat": "{{status}}"
+            "legendFormat": "{{status}}",
+            "refId": "A"
           }
         ]
       },
@@ -130,10 +180,15 @@
         "title": "Settlement Status",
         "type": "piechart",
         "gridPos": {"h": 8, "w": 8, "x": 0, "y": 16},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "targets": [
           {
             "expr": "sum(eivan_pay_settlements_total) by (status)",
-            "legendFormat": "{{status}}"
+            "legendFormat": "{{status}}",
+            "refId": "A"
           }
         ]
       },
@@ -142,22 +197,32 @@
         "title": "Credit Check Results",
         "type": "piechart",
         "gridPos": {"h": 8, "w": 8, "x": 8, "y": 16},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "targets": [
           {
             "expr": "sum(eivan_pay_credit_checks_total) by (grade)",
-            "legendFormat": "Grade {{grade}}"
+            "legendFormat": "Grade {{grade}}",
+            "refId": "A"
           }
         ]
       },
       {
         "id": 9,
         "title": "Wallet Transactions by Type",
-        "type": "graph",
+        "type": "timeseries",
         "gridPos": {"h": 8, "w": 12, "x": 16, "y": 16},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "targets": [
           {
             "expr": "rate(eivan_pay_wallet_transactions_total[5m])",
-            "legendFormat": "{{type}}"
+            "legendFormat": "{{type}}",
+            "refId": "A"
           }
         ]
       },
@@ -166,10 +231,15 @@
         "title": "Total Wallet Balance",
         "type": "stat",
         "gridPos": {"h": 8, "w": 6, "x": 0, "y": 24},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "targets": [
           {
             "expr": "sum(eivan_pay_wallet_balance_total)",
-            "legendFormat": "Total Balance"
+            "legendFormat": "Total Balance",
+            "refId": "A"
           }
         ],
         "fieldConfig": {
@@ -182,31 +252,29 @@
       {
         "id": 11,
         "title": "Failed Operations Rate",
-        "type": "graph",
+        "type": "timeseries",
         "gridPos": {"h": 8, "w": 12, "x": 6, "y": 24},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
         "targets": [
           {
             "expr": "rate(eivan_pay_loan_requests_total{status=\"failed\"}[5m])",
-            "legendFormat": "Failed Loan Requests"
+            "legendFormat": "Failed Loan Requests",
+            "refId": "A"
           },
           {
             "expr": "rate(eivan_pay_payments_total{status=\"failed\"}[5m])",
-            "legendFormat": "Failed Payments"
+            "legendFormat": "Failed Payments",
+            "refId": "B"
           },
           {
             "expr": "rate(eivan_pay_wallet_transactions_total{status=\"failed\"}[5m])",
-            "legendFormat": "Failed Wallet Transactions"
+            "legendFormat": "Failed Wallet Transactions",
+            "refId": "C"
           }
         ]
       }
     ]
-  }
 }
-
-
-
-
-
-
-
-
