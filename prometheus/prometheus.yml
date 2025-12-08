@@ -7,13 +7,6 @@ global:
     environment: 'production'
     monitor: 'eivan-pay-monitoring'
 
-# Alertmanager configuration
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets:
-          - alertmanager:9093
-
 # Load rules once and periodically evaluate them
 rule_files:
   - "rules/*.yml"
@@ -28,17 +21,6 @@ scrape_configs:
           instance: 'prometheus'
           service: 'monitoring'
 
-  # Alertmanager - Monitor Alertmanager itself
-  - job_name: 'alertmanager'
-    scrape_interval: 30s
-    scrape_timeout: 10s
-    static_configs:
-      - targets: ['alertmanager:9093']
-        labels:
-          instance: 'alertmanager'
-          service: 'monitoring'
-          component: 'alertmanager'
-
   # Node Exporter - System Metrics
   - job_name: 'node-exporter'
     static_configs:
@@ -46,14 +28,7 @@ scrape_configs:
         labels:
           instance: 'monitoring-server'
 
-  # cAdvisor - Container Metrics
-  - job_name: 'cadvisor'
-    static_configs:
-      - targets: ['cadvisor:8080']
-        labels:
-          instance: 'monitoring-server'
-
-  # PostgreSQL Exporter
+  # PostgreSQL Exporter - Database Metrics
   - job_name: 'postgres'
     static_configs:
       - targets: ['postgres-exporter:9187']
@@ -61,90 +36,9 @@ scrape_configs:
           instance: 'eivan-pay-database'
           service: 'postgresql'
 
-  # Redis Exporter
-  - job_name: 'redis'
+  # cAdvisor - Container Metrics (optional, enabled with --profile cadvisor)
+  - job_name: 'cadvisor'
     static_configs:
-      - targets: ['redis-exporter:9121']
+      - targets: ['cadvisor:8080']
         labels:
-          instance: 'eivan-pay-cache'
-          service: 'redis'
-
-  # Telegram Webhook - Monitor webhook service
-  - job_name: 'telegram-webhook'
-    scrape_interval: 30s
-    scrape_timeout: 10s
-    static_configs:
-      - targets: ['telegram-webhook:9091']  # Metrics endpoint
-        labels:
-          instance: 'telegram-webhook'
-          service: 'monitoring'
-          component: 'webhook'
-
-  # Eivan Pay API - Prometheus Metrics
-  # IMPORTANT: Update the target below with your actual API host and port
-  # Security: Protected with API Key + IP Whitelist
-  - job_name: 'eivan-pay-api'
-    scrape_interval: 30s
-    scrape_timeout: 10s
-    metrics_path: '/metrics'
-    static_configs:
-      - targets: ['your_api_host:3000']  # Update this with actual host:port
-        labels:
-          instance: 'eivan-pay-api'
-          service: 'api'
-          environment: 'production'
-    # API Key authentication
-    # IMPORTANT: Replace 'your_prometheus_api_key_here' with actual API key from .env
-    # This key must match PROMETHEUS_API_KEY in your application .env files
-      headers:
-        X-API-Key: 'your_prometheus_api_key_here'
-
-  # Backoffice Gateway - Prometheus Metrics
-  # IMPORTANT: Update the target below with your actual gateway host and port
-  # Security: Protected with API Key + IP Whitelist
-  - job_name: 'backoffice-gateway'
-    scrape_interval: 30s
-    scrape_timeout: 10s
-    metrics_path: '/metrics'
-    static_configs:
-      - targets: ['your_gateway_host:3003']  # Update this with actual host:port
-        labels:
-          instance: 'backoffice-gateway'
-          service: 'gateway'
-          environment: 'production'
-    # API Key authentication
-    # IMPORTANT: Replace 'your_prometheus_api_key_here' with actual API key from .env
-    # This key must match PROMETHEUS_API_KEY in your application .env files
-      headers:
-        X-API-Key: 'your_prometheus_api_key_here'
-
-  # PWA API - Prometheus Metrics (Optional)
-  # IMPORTANT: Update the target below with your actual PWA API host and port
-  # Security: Protected with API Key + IP Whitelist
-  - job_name: 'pwa-api'
-    scrape_interval: 30s
-    scrape_timeout: 10s
-    metrics_path: '/metrics'
-    static_configs:
-      - targets: ['your_pwa_api_host:3002']  # Update this with actual host:port
-        labels:
-          instance: 'pwa-api'
-          service: 'pwa'
-          environment: 'production'
-    # API Key authentication
-    # IMPORTANT: Replace 'your_prometheus_api_key_here' with actual API key from .env
-    # This key must match PROMETHEUS_API_KEY in your application .env files
-      headers:
-        X-API-Key: 'your_prometheus_api_key_here'
-
-  # Nginx - Stub Status (if accessible)
-  # IMPORTANT: Update the target below with your actual nginx host and port
-  - job_name: 'nginx'
-    metrics_path: '/nginx-status'
-    static_configs:
-      - targets: ['your_nginx_host:80']  # Update this with actual host:port
-        labels:
-          instance: 'nginx'
-          service: 'nginx'
-    # Note: Nginx stub_status module must be enabled
-
+          instance: 'monitoring-server'

@@ -47,8 +47,9 @@ services:
     container_name: prometheus
     restart: unless-stopped
     user: "nobody"
-    # Production: No public ports, access via Nginx only
-    ports: []
+    # Expose port for debugging and internal access
+    expose:
+      - "9090"
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -71,11 +72,10 @@ services:
       - '--web.console.templates=/usr/share/prometheus/consoles'
       - '--web.enable-lifecycle'
       - '--web.enable-admin-api'
-      - '--web.external-url=${PROMETHEUS_EXTERNAL_URL:-https://monitoring.eivanpay.com/prometheus}'
     networks:
       - monitoring-network
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/prometheus/-/healthy || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -100,8 +100,9 @@ services:
     container_name: grafana
     restart: unless-stopped
     user: "472"
-    # Production: No public ports, access via Nginx only
-    ports: []
+    # Expose port for internal access
+    expose:
+      - "3000"
     security_opt:
       - no-new-privileges:true
     labels:

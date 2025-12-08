@@ -28,17 +28,6 @@ scrape_configs:
           instance: 'prometheus'
           service: 'monitoring'
 
-  # Alertmanager - Monitor Alertmanager itself
-  - job_name: 'alertmanager'
-    scrape_interval: 30s
-    scrape_timeout: 10s
-    static_configs:
-      - targets: ['alertmanager:9093']
-        labels:
-          instance: 'alertmanager'
-          service: 'monitoring'
-          component: 'alertmanager'
-
   # Node Exporter - System Metrics
   - job_name: 'node-exporter'
     static_configs:
@@ -46,14 +35,7 @@ scrape_configs:
         labels:
           instance: 'monitoring-server'
 
-  # cAdvisor - Container Metrics
-  - job_name: 'cadvisor'
-    static_configs:
-      - targets: ['cadvisor:8080']
-        labels:
-          instance: 'monitoring-server'
-
-  # PostgreSQL Exporter
+  # PostgreSQL Exporter - Database Metrics
   - job_name: 'postgres'
     static_configs:
       - targets: ['postgres-exporter:9187']
@@ -61,26 +43,14 @@ scrape_configs:
           instance: 'eivan-pay-database'
           service: 'postgresql'
 
-  # Redis Exporter (Temporarily disabled)
-  # - job_name: 'redis'
-  #   static_configs:
-  #     - targets: ['redis-exporter:9121']
-  #       labels:
-  #         instance: 'eivan-pay-cache'
-  #         service: 'redis'
-
-  # Telegram Webhook - Monitor webhook service
-  - job_name: 'telegram-webhook'
-    scrape_interval: 30s
-    scrape_timeout: 10s
+  # cAdvisor - Container Metrics (optional, enabled with --profile cadvisor)
+  - job_name: 'cadvisor'
     static_configs:
-      - targets: ['telegram-webhook:9091']  # Metrics endpoint
+      - targets: ['cadvisor:8080']
         labels:
-          instance: 'telegram-webhook'
-          service: 'monitoring'
-          component: 'webhook'
+          instance: 'monitoring-server'
 
-  # Eivan Pay API - Prometheus Metrics
+  # Eivan Pay API - Application Metrics (configure via .env)
   # Security: Protected with API Key + IP Whitelist
   - job_name: 'eivan-pay-api'
     scrape_interval: 30s
