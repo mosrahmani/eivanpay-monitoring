@@ -115,6 +115,10 @@ services:
       - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-https://monitoring.eivanpay.com/grafana/}
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
       - GF_INSTALL_PLUGINS=grafana-piechart-panel
+      # Disable anonymous access - require login
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_AUTH_BASIC_ENABLED=true
+      - GF_AUTH_DISABLE_LOGIN_FORM=false
       - GF_SECURITY_DISABLE_GRAVATAR=true
       - GF_ANALYTICS_REPORTING_ENABLED=false
       - GF_ANALYTICS_CHECK_FOR_UPDATES=false
@@ -229,8 +233,10 @@ services:
     expose:
       - "9187"
     environment:
-      # Security: Use environment variable, not command line to avoid password in process list
-      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER:-eivan_pay_user}:${POSTGRES_PASSWORD}@${POSTGRES_HOST:-your_postgres_host}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-eivan_pay}?sslmode=disable
+      # Use separate environment variables (no URL encoding needed)
+      - DATA_SOURCE_USER=${POSTGRES_USER:-eivan_pay_user}
+      - DATA_SOURCE_PASS=${POSTGRES_PASSWORD}
+      - DATA_SOURCE_URI=${POSTGRES_HOST:-your_postgres_host}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-eivan_pay}?sslmode=disable
     security_opt:
       - no-new-privileges:true
     labels:
