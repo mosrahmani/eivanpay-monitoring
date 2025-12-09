@@ -1,8 +1,8 @@
 {
   "id": null,
   "uid": "business-metrics",
-  "title": "Eivan Pay - Business Metrics",
-  "tags": ["business", "financial", "eivan-pay"],
+  "title": "💼 Business Analytics",
+  "tags": ["business", "financial", "eivan-pay", "analytics"],
   "timezone": "browser",
   "schemaVersion": 16,
   "version": 0,

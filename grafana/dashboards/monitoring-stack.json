@@ -1,8 +1,8 @@
 {
   "id": null,
   "uid": "monitoring-stack",
-  "title": "Monitoring Stack Overview",
-  "tags": ["monitoring", "infrastructure", "stack"],
+  "title": "🔧 Monitoring Infrastructure",
+  "tags": ["monitoring", "infrastructure", "stack", "prometheus", "grafana"],
   "timezone": "browser",
   "schemaVersion": 16,
   "version": 0,

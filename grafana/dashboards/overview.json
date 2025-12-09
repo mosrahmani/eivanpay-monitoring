@@ -1,8 +1,8 @@
 {
   "id": null,
   "uid": "system-overview",
-  "title": "🎯 System Overview - Real-time",
-  "tags": ["overview", "main", "dashboard"],
+  "title": "📊 System Overview",
+  "tags": ["overview", "main", "dashboard", "system"],
   "timezone": "browser",
   "schemaVersion": 16,
   "version": 0,
@@ -562,5 +562,6 @@
     }
   ]
 }
+
 
 

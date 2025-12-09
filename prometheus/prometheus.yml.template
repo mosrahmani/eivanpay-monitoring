@@ -48,16 +48,17 @@ scrape_configs:
     scrape_timeout: 10s
 
   # Redis Exporter - Cache Metrics (External Server)
+  # DISABLED: Currently not in use
   # Note: This exporter runs on the database server, not in this stack
-  - job_name: 'eivan-pay-redis'
-    static_configs:
-      - targets: ['${REDIS_EXPORTER_ENDPOINT}']
-        labels:
-          instance: 'eivan-pay-cache'
-          service: 'redis'
-          environment: 'production'
-    scrape_interval: 30s
-    scrape_timeout: 10s
+  # - job_name: 'eivan-pay-redis'
+  #   static_configs:
+  #     - targets: ['${REDIS_EXPORTER_ENDPOINT}']
+  #       labels:
+  #         instance: 'eivan-pay-cache'
+  #         service: 'redis'
+  #         environment: 'production'
+  #   scrape_interval: 30s
+  #   scrape_timeout: 10s
 
   # cAdvisor - Container Metrics (optional, enabled with --profile cadvisor)
   - job_name: 'cadvisor'

@@ -1,8 +1,8 @@
 {
   "id": null,
   "uid": "node-exporter",
-  "title": "Node Exporter Full",
-  "tags": ["node", "system"],
+  "title": "🖥️ Server Resources",
+  "tags": ["node", "system", "server", "resources", "cpu", "memory", "disk"],
   "timezone": "browser",
   "schemaVersion": 16,
   "version": 0,

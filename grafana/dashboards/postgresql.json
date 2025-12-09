@@ -1,8 +1,8 @@
 {
   "id": null,
   "uid": "postgresql-metrics",
-  "title": "PostgreSQL Database Metrics",
-  "tags": ["database", "postgresql", "eivan-pay"],
+  "title": "💾 Database Performance",
+  "tags": ["database", "postgresql", "eivan-pay", "db"],
   "timezone": "browser",
   "schemaVersion": 16,
   "version": 0,
@@ -552,5 +552,6 @@
     }
   ]
 }
+
 
 
