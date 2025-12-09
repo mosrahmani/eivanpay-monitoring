@@ -11,6 +11,13 @@ global:
 rule_files:
   - "rules/*.yml"
 
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
 # Scrape configurations
 scrape_configs:
   # Prometheus itself
@@ -32,7 +39,7 @@ scrape_configs:
   # Note: This exporter runs on the database server, not in this stack
   - job_name: 'eivan-pay-postgresql'
     static_configs:
-      - targets: ['${POSTGRES_EXPORTER_ENDPOINT:-188.121.105.218:9187}']
+      - targets: ['188.121.105.218:9187']
         labels:
           instance: 'eivan-pay-database'
           service: 'postgresql'
@@ -52,6 +59,14 @@ scrape_configs:
   #         environment: 'production'
   #   scrape_interval: 30s
   #   scrape_timeout: 10s
+
+  # Alertmanager - Monitoring Alertmanager itself
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+        labels:
+          instance: 'alertmanager'
+          service: 'monitoring'
 
   # cAdvisor - Container Metrics (optional, enabled with --profile cadvisor)
   - job_name: 'cadvisor'

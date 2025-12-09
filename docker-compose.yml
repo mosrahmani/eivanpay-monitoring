@@ -18,7 +18,7 @@ services:
     depends_on:
       - grafana
       - prometheus
-      # - alertmanager  # Temporarily disabled
+      - alertmanager
     networks:
       - monitoring-network
     healthcheck:
@@ -72,6 +72,8 @@ services:
       - '--web.console.templates=/usr/share/prometheus/consoles'
       - '--web.enable-lifecycle'
       - '--web.enable-admin-api'
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - monitoring-network
     healthcheck:
@@ -256,107 +258,105 @@ services:
   #     timeout: 10s
   #     retries: 3
 
-  # Alertmanager - Alert Management (Temporarily disabled)
-  # alertmanager:
-  #   image: prom/alertmanager:latest
-  #   container_name: alertmanager
-  #   restart: unless-stopped
-  #   user: "nobody"
-  #   # Production: No public ports, access via Nginx only
-  #   ports: []
-  #   security_opt:
-  #     - no-new-privileges:true
-  #   read_only: true
-  #   tmpfs:
-  #     - /tmp
-  #     - /var/run
-  #   labels:
-  #     - "com.eivan-pay.service=monitoring"
-  #     - "com.eivan-pay.component=alertmanager"
-  #   env_file:
-  #     - .env
-  #   volumes:
-  #     - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
-  #     - ./alertmanager/templates:/etc/alertmanager/templates:ro
-  #     - alertmanager_data:/alertmanager
-  #   command:
-  #     - '--config.file=/etc/alertmanager/alertmanager.yml'
-  #     - '--storage.path=/alertmanager'
-  #     - '--web.external-url=${ALERTMANAGER_EXTERNAL_URL:-https://monitoring.example.com/alertmanager}'
-  #     - '--cluster.listen-address='
-  #   depends_on:
-  #     - prometheus
-  #     - telegram-webhook
-  #   networks:
-  #     - monitoring-network
-  #   healthcheck:
-  #     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 10s
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         cpus: '0.5'
-  #         memory: 512M
-  #       reservations:
-  #         cpus: '0.1'
-  #         memory: 128M
-  #   logging:
-  #     driver: "json-file"
-  #     options:
-  #       max-size: "10m"
-  #       max-file: "3"
+  # Alertmanager - Alert Management
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    restart: unless-stopped
+    user: "nobody"
+    # Production: No public ports, access via Nginx only
+    ports: []
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run
+    labels:
+      - "com.eivan-pay.service=monitoring"
+      - "com.eivan-pay.component=alertmanager"
+    env_file:
+      - .env
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./alertmanager/templates:/etc/alertmanager/templates:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=${ALERTMANAGER_EXTERNAL_URL:-https://monitoring.eivanpay.com/alertmanager}'
+      - '--web.route-prefix=/'
+      - '--cluster.listen-address='
+    depends_on:
+      - prometheus
+      - telegram-webhook
+    networks:
+      - monitoring-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # Telegram Webhook - Receives alerts and forwards to Telegram (Temporarily disabled)
-  # telegram-webhook:
-  #   build:
-  #     context: ./alertmanager
-  #     dockerfile: Dockerfile
-  #   container_name: telegram-webhook
-  #   restart: unless-stopped
-  #   # User is set in Dockerfile (webhook:1000)
-  #   # Security: Internal network only
-  #   expose:
-  #     - "8080"
-  #     - "9091"  # Prometheus metrics port
-  #   security_opt:
-  #     - no-new-privileges:true
-  #   read_only: true
-  #   tmpfs:
-  #     - /tmp
-  #   environment:
-  #     - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-  #     - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
-  #     - PORT=8080
-  #     - METRICS_PORT=9091
-  #     - MAX_RETRIES=3
-  #     - RATE_LIMIT_PER_MINUTE=20
-  #   labels:
-  #     - "com.eivan-pay.service=monitoring"
-  #     - "com.eivan-pay.component=telegram-webhook"
-  #   networks:
-  #     - monitoring-network
-  #   healthcheck:
-  #     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 5s
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         cpus: '0.25'
-  #         memory: 256M
-  #       reservations:
-  #         cpus: '0.05'
-  #         memory: 64M
-  #   logging:
-  #     driver: "json-file"
-  #     options:
-  #       max-size: "10m"
-  #       max-file: "3"
+  # Telegram Webhook - Receives alerts and forwards to Telegram
+  telegram-webhook:
+    build:
+      context: ./alertmanager
+      dockerfile: Dockerfile
+    container_name: telegram-webhook
+    restart: unless-stopped
+    # User is set in Dockerfile (webhook:1000)
+    # Security: Internal network only
+    expose:
+      - "8080"
+      - "9091"  # Prometheus metrics port
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-${HTTP_PROXY:-}}
+      - PORT=8080
+      - METRICS_PORT=9091
+      - MAX_RETRIES=3
+      - RATE_LIMIT_PER_MINUTE=20
+      - TELEGRAM_TIMEOUT=30
+    labels:
+      - "com.eivan-pay.service=monitoring"
+      - "com.eivan-pay.component=telegram-webhook"
+    networks:
+      - monitoring-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.05'
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   monitoring-network:

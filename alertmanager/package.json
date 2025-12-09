@@ -1,0 +1,19 @@
+{
+  "name": "telegram-webhook",
+  "version": "2.0.0",
+  "description": "Telegram webhook server for Alertmanager",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "fastify": "^4.24.3",
+    "axios": "^1.6.2",
+    "https-proxy-agent": "^7.0.2",
+    "prom-client": "^15.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+

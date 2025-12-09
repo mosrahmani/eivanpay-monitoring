@@ -1,23 +1,30 @@
-FROM python:3.11-slim
+FROM node:20-alpine
 
 WORKDIR /app
 
+# Install wget for healthcheck
+RUN apk add --no-cache wget
+
 # Install dependencies
-RUN pip install --no-cache-dir requests prometheus-client
+COPY package.json ./
+RUN npm install --omit=dev && npm cache clean --force
 
 # Create non-root user
-RUN useradd -m -u 1000 webhook && \
-    chown -R webhook:webhook /app
+RUN addgroup -S webhook && \
+    adduser -S -G webhook webhook
+
+# Copy application
+COPY --chown=webhook:webhook server.js ./
 
 USER webhook
 
-# Copy webhook server
-COPY --chown=webhook:webhook webhook-server.py /app/webhook-server.py
-RUN chmod +x /app/webhook-server.py
+# Expose ports
+EXPOSE 8080 9091
 
-# Expose port
-EXPOSE 8080
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=5s \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-# Use webhook server as entrypoint
-ENTRYPOINT ["python3", "/app/webhook-server.py"]
+# Start server
+CMD ["node", "server.js"]
 
