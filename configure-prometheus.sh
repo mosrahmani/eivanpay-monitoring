@@ -28,6 +28,8 @@ NGINX_PORT=${NGINX_PORT:-80}
 PWA_API_HOST=${PWA_API_HOST:-your_pwa_api_host}
 PWA_API_PORT=${PWA_API_PORT:-3002}
 PROMETHEUS_API_KEY=${PROMETHEUS_API_KEY:-your_prometheus_api_key_here}
+POSTGRES_EXPORTER_ENDPOINT=${POSTGRES_EXPORTER_ENDPOINT:-188.121.105.218:9187}
+REDIS_EXPORTER_ENDPOINT=${REDIS_EXPORTER_ENDPOINT:-188.121.105.218:9121}
 
 log_step "Configuring Prometheus Targets"
 
@@ -43,6 +45,7 @@ if command_exists envsubst; then
     # Export variables for envsubst
     export API_HOST API_PORT GATEWAY_HOST GATEWAY_PORT NGINX_HOST NGINX_PORT
     export PWA_API_HOST PWA_API_PORT PROMETHEUS_API_KEY
+    export POSTGRES_EXPORTER_ENDPOINT REDIS_EXPORTER_ENDPOINT
     envsubst < "$SCRIPT_DIR/prometheus/prometheus.yml.template" > "$SCRIPT_DIR/prometheus/prometheus.yml"
 else
     log_info "Using sed to generate configuration from template..."
@@ -59,6 +62,8 @@ else
     sed -i.bak "s|\${PWA_API_HOST}|${PWA_API_HOST}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
     sed -i.bak "s|\${PWA_API_PORT}|${PWA_API_PORT}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
     sed -i.bak "s|\${PROMETHEUS_API_KEY}|${PROMETHEUS_API_KEY}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
+    sed -i.bak "s|\${POSTGRES_EXPORTER_ENDPOINT}|${POSTGRES_EXPORTER_ENDPOINT}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
+    sed -i.bak "s|\${REDIS_EXPORTER_ENDPOINT}|${REDIS_EXPORTER_ENDPOINT}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
     
     # Remove backup files
     rm -f "$SCRIPT_DIR/prometheus/prometheus.yml.bak"
@@ -73,11 +78,13 @@ echo "   - Nginx: ${NGINX_HOST}:${NGINX_PORT}"
 if [ "$PWA_API_HOST" != "your_pwa_api_host" ]; then
   echo "   - PWA API: ${PWA_API_HOST}:${PWA_API_PORT}"
 fi
+echo "   - PostgreSQL Exporter: ${POSTGRES_EXPORTER_ENDPOINT}"
+echo "   - Redis Exporter: ${REDIS_EXPORTER_ENDPOINT}"
 echo ""
 log_info "Prometheus API Key configured: ${PROMETHEUS_API_KEY:0:10}..."
 echo ""
 log_info "To reload Prometheus configuration:"
 echo "   curl -X POST http://localhost:9090/-/reload"
-echo "   (or restart: make restart prometheus)"
+echo "   (or restart: docker compose restart prometheus)"
 
 
