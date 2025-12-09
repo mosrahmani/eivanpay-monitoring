@@ -72,7 +72,7 @@
       },
       "targets": [
         {
-          "expr": "100 * (\n  (sum(pg_stat_database_blks_hit{datname=\"eivan_pay\"}) / (sum(pg_stat_database_blks_hit{datname=\"eivan_pay\"}) + sum(pg_stat_database_blks_read{datname=\"eivan_pay\"}))) * 0.4 +\n  (1 - (pg_stat_activity_count{datname=\"eivan_pay\",state=\"active\"} / 100)) * 0.3 +\n  (up{job=\"postgres\"}) * 0.3\n)",
+          "expr": "100 * (\n  (sum(pg_stat_database_blks_hit{datname=\"eivan_pay\"}) / (sum(pg_stat_database_blks_hit{datname=\"eivan_pay\"}) + sum(pg_stat_database_blks_read{datname=\"eivan_pay\"}))) * 0.4 +\n  (1 - (pg_stat_activity_count{datname=\"eivan_pay\",state=\"active\"} / 100)) * 0.3 +\n  (up{job=\"eivan-pay-postgresql\"}) * 0.3\n)",
           "legendFormat": "DB Health",
           "refId": "A"
         }
@@ -154,7 +154,7 @@
           "refId": "B"
         },
         {
-          "expr": "up{job=\"postgres\"}",
+          "expr": "up{job=\"eivan-pay-postgresql\"}",
           "legendFormat": "PostgreSQL",
           "refId": "C"
         }

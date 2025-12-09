@@ -93,7 +93,7 @@
         },
         "targets": [
           {
-            "expr": "up{job=\"postgres\"}",
+            "expr": "up{job=\"eivan-pay-postgresql\"}",
             "legendFormat": "PostgreSQL Exporter",
             "refId": "A"
           }
