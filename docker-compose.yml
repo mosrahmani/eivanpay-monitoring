@@ -19,6 +19,7 @@ services:
       - grafana
       - prometheus
       - alertmanager
+      - cadvisor
     networks:
       - monitoring-network
     healthcheck:
@@ -193,14 +194,20 @@ services:
       timeout: 10s
       retries: 3
 
-  # cAdvisor - Container Metrics (OPTIONAL)
-  # cAdvisor is optional and disabled by default
-  # To enable: docker compose --profile cadvisor up -d
+  # cAdvisor - Container Metrics
+  # Using Docker Hub image (accessible without VPN in Iran)
+  # Alternative: If Docker Hub is blocked, use registry mirrors:
+  #   - docker.kernel.ir
+  #   - docker.arvancloud.ir
+  # Configure in /etc/docker/daemon.json:
+  #   { "registry-mirrors": ["https://docker.kernel.ir", "https://docker.arvancloud.ir"] }
   cadvisor:
-    profiles:
-      - cadvisor  # Only starts with --profile cadvisor flag
-    # Using Docker Hub (google/cadvisor)
-    image: google/cadvisor:v0.47.0
+    # Using Docker Hub (more accessible than gcr.io in Iran)
+    # If google/cadvisor doesn't work, try these alternatives:
+    #   1. secureimages/cadvisor:latest
+    #   2. gcr.io/cadvisor/cadvisor:latest (requires VPN)
+    #   3. Or pull manually: docker pull google/cadvisor:v0.46.0
+    image: google/cadvisor:latest
     container_name: cadvisor
     restart: unless-stopped
     # Security: Internal network only
@@ -229,6 +236,19 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # PostgreSQL Exporter is now running on the database server
   # Endpoint: http://188.121.105.218:9187/metrics

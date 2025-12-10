@@ -68,9 +68,12 @@ scrape_configs:
           instance: 'alertmanager'
           service: 'monitoring'
 
-  # cAdvisor - Container Metrics (optional, enabled with --profile cadvisor)
+  # cAdvisor - Container Metrics
   - job_name: 'cadvisor'
     static_configs:
       - targets: ['cadvisor:8080']
         labels:
           instance: 'monitoring-server'
+          service: 'cadvisor'
+    scrape_interval: 15s
+    scrape_timeout: 10s
