@@ -202,12 +202,10 @@ services:
   # Configure in /etc/docker/daemon.json:
   #   { "registry-mirrors": ["https://docker.kernel.ir", "https://docker.arvancloud.ir"] }
   cadvisor:
-    # Using Docker Hub (more accessible than gcr.io in Iran)
-    # If google/cadvisor doesn't work, try these alternatives:
-    #   1. secureimages/cadvisor:latest
-    #   2. gcr.io/cadvisor/cadvisor:latest (requires VPN)
-    #   3. Or pull manually: docker pull google/cadvisor:v0.46.0
-    image: google/cadvisor:latest
+    # Using alternative image that supports cgroup v2
+    # google/cadvisor may not be available or may not support cgroup v2
+    # This image is maintained and supports modern cgroup v2 systems
+    image: secureimages/cadvisor:latest
     container_name: cadvisor
     restart: unless-stopped
     # Security: Internal network only
@@ -219,6 +217,8 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
+      # cgroup v2 support (required for Ubuntu 22.04+)
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
     # Note: cAdvisor requires privileged mode for container metrics
     # This is a known limitation, consider alternatives for production
     privileged: true
