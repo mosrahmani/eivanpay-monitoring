@@ -10,7 +10,7 @@
 - ✅ **Grafana**: Professional dashboards and visualization
 - ✅ **Alertmanager**: Alert management and routing
 - ✅ **Telegram Integration**: Critical alerts sent to Telegram
-- ✅ **Nginx Reverse Proxy**: SSL/TLS and Basic Authentication
+- ✅ **Traefik Integration**: SSL/TLS and routing via Traefik reverse proxy
 - ✅ **Docker Secrets**: Secure credential management
 - ✅ **Node Exporter**: System monitoring
 - ✅ **cAdvisor**: Container monitoring
@@ -40,7 +40,6 @@ docker compose version  # Should be 2.0+
 # Check other required tools
 git --version          # For cloning repository
 openssl version        # For SSL certificate management
-htpasswd -v            # For Basic Auth (apache2-utils package)
 ```
 
 ### Installation of Prerequisites
@@ -58,7 +57,7 @@ sudo sh get-docker.sh
 sudo apt-get install docker-compose-plugin
 
 # Install additional tools
-sudo apt-get install -y git openssl apache2-utils curl wget
+sudo apt-get install -y git openssl curl wget
 
 # Add user to docker group (to run without sudo)
 sudo usermod -aG docker $USER
@@ -77,7 +76,7 @@ sudo systemctl start docker
 sudo systemctl enable docker
 
 # Install additional tools
-sudo yum install -y git openssl httpd-tools curl wget
+sudo yum install -y git openssl curl wget
 
 # Add user to docker group
 sudo usermod -aG docker $USER
@@ -92,7 +91,7 @@ sudo usermod -aG docker $USER
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Install additional tools
-brew install git openssl httpd-tools curl wget
+brew install git openssl curl wget
 ```
 
 ### Network Requirements
@@ -123,7 +122,7 @@ sudo firewall-cmd --list-services
 - **Root or sudo access**: Required for SSL certificate setup and Basic Authentication
 - **Domain name**: For HTTPS access (e.g., `monitoring.example.com`)
 - **DNS access**: Domain must point to server IP address
-- **Eivan Pay services**: Access to API, Gateway, and Nginx servers for metrics scraping
+- **Eivan Pay services**: Access to API and Gateway servers for metrics scraping
 - **Telegram account**: Recommended for receiving alerts (optional but highly recommended)
 
 ## 🚀 Quick Start
@@ -163,7 +162,7 @@ fi
 # Check required commands
 echo ""
 echo "=== Required Commands Check ==="
-for cmd in git openssl htpasswd curl wget; do
+for cmd in git openssl curl wget; do
     if command -v $cmd > /dev/null 2>&1; then
         echo "✅ $cmd is installed"
     else
@@ -199,21 +198,18 @@ make setup
 ```
 
 This command interactively performs all steps:
-1. SSL certificate setup
-2. Basic Authentication setup
-3. Docker Secrets setup (optional)
-4. Domain update
-5. Environment validation
-6. Service deployment
+1. Docker Secrets setup (optional)
+2. Domain update
+3. Environment validation
+4. Service deployment
 
 **What the setup script does:**
-- Creates necessary directories (`nginx/ssl`, `nginx/auth`)
-- Guides you through SSL certificate configuration
-- Sets up Basic Authentication for all services
 - Optionally configures Docker Secrets
-- Updates domain name in all configuration files
+- Updates domain name in configuration files
 - Validates environment variables
 - Deploys all services
+
+**Note**: SSL/TLS and authentication are handled by Traefik reverse proxy. Ensure Traefik is configured with proper SSL certificates and middleware for authentication.
 
 **After setup completes:**
 - Services will be running
@@ -242,21 +238,16 @@ ls -la scripts/**/*.sh | head -5
 ls -la configure-prometheus.sh
 
 # Create necessary directories (if they don't exist)
-mkdir -p nginx/ssl
-mkdir -p nginx/auth
 mkdir -p backups/grafana
 
 # Set proper permissions
 chmod 755 scripts
-chmod 755 nginx
-chmod 700 nginx/ssl
-chmod 700 nginx/auth
 ```
 
 **Verify Directory Structure:**
 ```bash
 # Check that all required directories exist
-ls -la | grep -E "alertmanager|prometheus|grafana|nginx|scripts"
+ls -la | grep -E "alertmanager|prometheus|grafana|scripts"
 ```
 
 #### Step 2: Configure Environment Variables
@@ -313,8 +304,6 @@ API_HOST=your_api_host                     # e.g., api-server.internal or IP
 API_PORT=3000
 GATEWAY_HOST=your_gateway_host             # e.g., gateway-server.internal or IP
 GATEWAY_PORT=3003
-NGINX_HOST=your_nginx_host                 # e.g., nginx-server.internal or IP
-NGINX_PORT=80
 
 # Prometheus API Key (REQUIRED for scraping application metrics)
 # This key must match the one configured in your application .env files
@@ -327,63 +316,9 @@ PROMETHEUS_API_KEY=your_secure_prometheus_api_key_here_min_32_characters
 - Use strong passwords (minimum 32 characters recommended)
 - Domain URLs must match your actual domain name
 - Service hosts can be IP addresses or internal DNS names
+- SSL/TLS and authentication are handled by Traefik reverse proxy
 
-#### Step 3: Configure SSL Certificates
-
-```bash
-make setup-ssl
-```
-
-**Options:**
-1. **Use existing certificates**: Place your `monitoring.crt` and `monitoring.key` in `nginx/ssl/`
-2. **Generate self-signed**: For testing only (not recommended for production)
-3. **Let's Encrypt**: Recommended for production (free and trusted)
-
-**Manual SSL Setup:**
-```bash
-# Create SSL directory
-mkdir -p nginx/ssl
-
-# Copy your certificates
-cp /path/to/your/certificate.crt nginx/ssl/monitoring.crt
-cp /path/to/your/private.key nginx/ssl/monitoring.key
-
-# Set correct permissions
-chmod 600 nginx/ssl/monitoring.key
-chmod 644 nginx/ssl/monitoring.crt
-
-# Verify certificates
-openssl x509 -in nginx/ssl/monitoring.crt -text -noout
-```
-
-#### Step 4: Configure Basic Authentication
-
-```bash
-make setup-auth
-```
-
-This will prompt you to create usernames and passwords for:
-- Grafana access
-- Prometheus access
-- Alertmanager access
-
-**Manual Basic Auth Setup:**
-```bash
-# Install htpasswd if not available
-sudo apt-get install apache2-utils  # Ubuntu/Debian
-# or
-sudo yum install httpd-tools        # CentOS/RHEL
-
-# Create auth directory
-mkdir -p nginx/auth
-
-# Create .htpasswd files
-htpasswd -c nginx/auth/grafana.htpasswd grafana_user
-htpasswd -c nginx/auth/prometheus.htpasswd prometheus_user
-htpasswd -c nginx/auth/alertmanager.htpasswd alertmanager_user
-```
-
-#### Step 5: Update Domain Configuration
+#### Step 3: Update Domain Configuration
 
 ```bash
 make setup-domain your-actual-domain.com
@@ -392,15 +327,11 @@ make setup-domain your-actual-domain.com
 Replace `your-actual-domain.com` with your actual domain name.
 
 This updates:
-- All Nginx configuration files
 - Docker Compose external URLs
 - Environment variables
 
 **Manual Domain Update:**
 ```bash
-# Update Nginx configs
-find nginx/conf.d -type f -name "*.conf" -exec sed -i 's/monitoring.example.com/your-domain.com/g' {} \;
-
 # Update docker-compose.yml
 sed -i 's|monitoring.example.com|your-domain.com|g' docker-compose.yml
 
@@ -408,7 +339,7 @@ sed -i 's|monitoring.example.com|your-domain.com|g' docker-compose.yml
 sed -i 's|monitoring.example.com|your-domain.com|g' .env
 ```
 
-#### Step 6: Configure Prometheus Targets
+#### Step 4: Configure Prometheus Targets
 
 ```bash
 make setup-prometheus
@@ -422,7 +353,7 @@ This generates `prometheus/prometheus.yml` from template using your `.env` varia
 make targets
 ```
 
-#### Step 7: Configure Telegram Bot (Recommended)
+#### Step 5: Configure Telegram Bot (Recommended)
 
 ```bash
 make setup-telegram
@@ -447,7 +378,7 @@ This interactive script will:
    TELEGRAM_CHAT_ID=your_chat_id_here
    ```
 
-#### Step 8: Configure Docker Secrets (Optional but Recommended)
+#### Step 6: Configure Docker Secrets (Optional but Recommended)
 
 ```bash
 make setup-secrets
@@ -474,7 +405,7 @@ echo "your_grafana_admin_password" | docker secret create grafana_admin_password
 cp docker-compose.secrets.yml.example docker-compose.secrets.yml
 ```
 
-#### Step 9: Validate Configuration
+#### Step 7: Validate Configuration
 
 ```bash
 # Validate environment variables
@@ -484,26 +415,18 @@ make validate
 This checks:
 - All required environment variables are set
 - No placeholder values remain (`your_*` placeholders)
-- SSL certificates exist (if configured)
-- Basic auth files exist (if configured)
 - Domain configuration is correct
 
 **Manual Validation:**
 ```bash
 # Check .env file has all required variables
-grep -E "POSTGRES_|REDIS_|TELEGRAM_|GRAFANA_|PROMETHEUS_|ALERTMANAGER_|API_HOST|GATEWAY_HOST|NGINX_HOST" .env
+grep -E "POSTGRES_|REDIS_|TELEGRAM_|GRAFANA_|PROMETHEUS_|ALERTMANAGER_|API_HOST|GATEWAY_HOST" .env
 
 # Verify no placeholder values remain
 grep -E "your_|example\.com" .env && echo "⚠️  Found placeholder values!" || echo "✅ No placeholders found"
-
-# Check SSL certificates exist
-ls -la nginx/ssl/*.crt nginx/ssl/*.key 2>/dev/null && echo "✅ SSL certificates found" || echo "⚠️  SSL certificates missing"
-
-# Check Basic Auth files exist
-ls -la nginx/auth/*.htpasswd 2>/dev/null && echo "✅ Auth files found" || echo "⚠️  Auth files missing"
 ```
 
-#### Step 10: Deploy Services
+#### Step 8: Deploy Services
 
 **Before deploying, verify:**
 ```bash
@@ -545,9 +468,9 @@ docker compose ps
 docker compose logs
 
 # Check specific service logs
-docker compose logs nginx
 docker compose logs prometheus
 docker compose logs grafana
+docker compose logs alertmanager
 
 # Verify configuration
 docker compose config
@@ -659,13 +582,13 @@ make clean-all       # Clean up everything (including volumes) - ⚠️ Destruct
 
 ## 📊 Access URLs
 
-**All services are accessible via Nginx with SSL and Basic Authentication:**
+**All services are accessible via Traefik reverse proxy with SSL/TLS:**
 
 - **Grafana**: `https://your-domain.com/grafana/`
 - **Prometheus**: `https://your-domain.com/prometheus/`
 - **Alertmanager**: `https://your-domain.com/alertmanager/`
 
-**Note**: Service ports are not publicly accessible and can only be accessed via Nginx.
+**Note**: Service ports are not publicly accessible and can only be accessed via Traefik. Authentication and SSL/TLS are handled by Traefik middleware.
 
 ## 🔒 Security
 
@@ -683,15 +606,15 @@ This project is designed with security as a priority:
 - ✅ **Version pinning**: All Docker images pinned to specific versions
 
 ### Network Security
-- ✅ **No public ports**: Services accessible only via Nginx
+- ✅ **No public ports**: Services accessible only via Traefik
 - ✅ **Internal network**: All services in isolated `monitoring-network`
 - ✅ **Exporters**: Only exposed internally, not publicly
 
 ### Authentication & Encryption
-- ✅ **Basic Authentication**: All services protected via Nginx
-- ✅ **HTTPS only**: HTTP to HTTPS redirect configured
-- ✅ **Security headers**: HSTS, X-Frame-Options, CSP, XSS Protection
-- ✅ **Rate limiting**: Configured in Nginx
+- ✅ **Authentication**: Handled via Traefik middleware (Basic Auth or other)
+- ✅ **HTTPS only**: SSL/TLS termination via Traefik
+- ✅ **Security headers**: Configured via Traefik middleware
+- ✅ **Rate limiting**: Configured via Traefik middleware
 
 ### Credential Management
 - ✅ **Environment variables**: Sensitive data in `.env` file
@@ -701,8 +624,8 @@ This project is designed with security as a priority:
 ### Important Security Notes
 - Never commit credentials to version control
 - Use Docker Secrets for production
-- Keep SSL certificates secure
-- Don't commit authentication files
+- Configure SSL/TLS via Traefik
+- Configure authentication via Traefik middleware
 - Configure firewall to limit access
 - Use strong passwords (minimum 32 characters)
 - Rotate passwords regularly
@@ -822,12 +745,6 @@ eivan-pay-monitoring/
 │   │   └── dashboards/
 │   └── dashboards/       # Dashboard JSON files
 │
-├── nginx/                # Nginx reverse proxy
-│   ├── nginx.conf        # Main Nginx config
-│   ├── conf.d/           # Server blocks
-│   ├── ssl/              # SSL certificates (gitignored)
-│   └── auth/             # Basic auth files (gitignored)
-│
 ├── scripts/               # Utility scripts
 │   ├── lib/              # Common functions
 │   │   ├── common.sh
@@ -835,8 +752,6 @@ eivan-pay-monitoring/
 │   │   └── init.sh
 │   └── production/       # Production setup scripts
 │       ├── setup-production.sh
-│       ├── setup-ssl.sh
-│       ├── setup-nginx-auth.sh
 │       ├── setup-secrets.sh
 │       └── update-domain.sh
 │
@@ -866,32 +781,15 @@ Required variables:
 - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
 - `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`
 - `GRAFANA_ROOT_URL`, `PROMETHEUS_EXTERNAL_URL`, `ALERTMANAGER_EXTERNAL_URL`
-- `API_HOST`, `GATEWAY_HOST`, `NGINX_HOST` (for Prometheus scraping)
+- `API_HOST`, `GATEWAY_HOST` (for Prometheus scraping)
 - `PROMETHEUS_API_KEY` (for authenticating Prometheus scraping requests - min 32 chars)
 
-### SSL Certificates
+### SSL/TLS and Authentication
 
-Options:
-1. **Use existing certificates**: Copy your `.crt` and `.key` files to `nginx/ssl/`
-2. **Generate self-signed**: For testing only
-3. **Let's Encrypt**: Recommended for production (free and trusted)
-
-```bash
-make setup-ssl
-```
-
-### Basic Authentication
-
-Configure usernames and passwords for each service:
-
-```bash
-make setup-auth
-```
-
-This creates `.htpasswd` files in `nginx/auth/` for:
-- Grafana
-- Prometheus
-- Alertmanager
+SSL/TLS and authentication are handled by Traefik reverse proxy. Ensure Traefik is configured with:
+- SSL certificates (Let's Encrypt or custom)
+- Authentication middleware (Basic Auth or other)
+- Proper routing rules for monitoring services
 
 ### Docker Secrets (Production)
 
@@ -938,56 +836,31 @@ sudo netstat -tulpn | grep -E ':(80|443)'
 # 4. Insufficient permissions
 sudo chown -R $USER:$USER .
 chmod 600 .env
-chmod 600 nginx/ssl/*.key
 ```
 
-### SSL Certificate issues
+### SSL/TLS or Authentication issues
 
-**Symptoms**: Nginx fails to start, SSL errors in browser
+**Symptoms**: SSL errors in browser, authentication not working, 401 errors
 
 **Solutions**:
 ```bash
-# Check SSL files exist
-ls -la nginx/ssl/
+# SSL/TLS and authentication are handled by Traefik reverse proxy
+# Verify Traefik is properly configured:
 
-# Verify certificate format
-openssl x509 -in nginx/ssl/monitoring.crt -text -noout
+# Check Traefik logs (adjust path to your Traefik compose file)
+docker compose -f ../traefik/docker-compose.yml logs traefik
 
-# Check certificate expiration
-openssl x509 -in nginx/ssl/monitoring.crt -noout -dates
+# Verify services are accessible via Traefik
+curl -I https://your-domain.com/grafana/api/health
+curl -I https://your-domain.com/prometheus/-/healthy
+curl -I https://your-domain.com/alertmanager/-/healthy
 
-# Test Nginx configuration
-docker exec monitoring-nginx nginx -t
-
-# Check file permissions
-chmod 600 nginx/ssl/*.key
-chmod 644 nginx/ssl/*.crt
-
-# Reconfigure SSL
-make setup-ssl
+# Ensure Traefik has:
+# - SSL certificates configured (Let's Encrypt or custom)
+# - Authentication middleware configured (Basic Auth or other)
+# - Proper routing rules for monitoring services
 ```
 
-### Authentication not working
-
-**Symptoms**: Can't login, 401 errors, authentication prompts not showing
-
-**Solutions**:
-```bash
-# Check authentication files exist
-ls -la nginx/auth/
-
-# Verify .htpasswd files are readable
-cat nginx/auth/grafana.htpasswd
-
-# Test htpasswd file
-htpasswd -v nginx/auth/grafana.htpasswd username
-
-# Reconfigure authentication
-make setup-auth
-
-# Restart Nginx
-make restart nginx
-```
 
 ### Telegram not working
 
@@ -1035,7 +908,7 @@ grep -A 5 "job_name:" prometheus/prometheus.yml
 docker exec prometheus ping -c 3 your_api_host
 
 # Verify service hosts in .env
-grep -E "API_HOST|GATEWAY_HOST|NGINX_HOST" .env
+grep -E "API_HOST|GATEWAY_HOST" .env
 
 # Reconfigure Prometheus
 make setup-prometheus
@@ -1062,12 +935,8 @@ make logs grafana
 # Verify Grafana is running
 docker exec grafana wget -qO- http://localhost:3000/api/health
 
-# Check Nginx proxy configuration
-docker exec monitoring-nginx nginx -t
-
 # Restart services
 make restart grafana
-make restart nginx
 ```
 
 ### Domain not resolving
@@ -1081,7 +950,6 @@ nslookup your-domain.com
 dig your-domain.com
 
 # Verify domain in configs
-grep -r "your-domain.com" nginx/conf.d/
 grep -r "your-domain.com" docker-compose.yml
 
 # Update domain
@@ -1293,7 +1161,7 @@ Before deploying to production, complete this checklist:
 - [ ] Prometheus collecting metrics
 - [ ] Grafana dashboards functional
 
-**For a detailed checklist, see `PRODUCTION_CHECKLIST.md`**
+**See the Production Deployment section below for detailed checklist.**
 
 ## 📞 Support & Common Issues
 
@@ -1301,7 +1169,7 @@ Before deploying to production, complete this checklist:
 
 If you encounter issues:
 
-1. **Check documentation**: Review this README and `PRODUCTION_CHECKLIST.md`
+1. **Check documentation**: Review this README and the Production Deployment section
 2. **Run health check**: `make health` - shows overall system status
 3. **Check logs**: `make logs [service-name]` - shows detailed error messages
 4. **Review troubleshooting**: See troubleshooting section above
@@ -1312,14 +1180,11 @@ If you encounter issues:
 **Issue**: "GRAFANA_ADMIN_PASSWORD not set"
 - **Solution**: Set `GRAFANA_ADMIN_PASSWORD` in `.env` file
 
-**Issue**: "SSL certificate not found"
-- **Solution**: Run `make setup-ssl` or place certificates in `nginx/ssl/`
-
 **Issue**: "Domain not updated"
 - **Solution**: Run `make setup-domain your-domain.com`
 
 **Issue**: "Prometheus targets are DOWN"
-- **Solution**: Update `API_HOST`, `GATEWAY_HOST`, `NGINX_HOST` in `.env` and run `make setup-prometheus`
+- **Solution**: Update `API_HOST`, `GATEWAY_HOST` in `.env` and run `make setup-prometheus`
 
 **Issue**: "Telegram alerts not working"
 - **Solution**: Run `make setup-telegram` and verify bot token/chat ID
@@ -1356,18 +1221,6 @@ make clean-all         # ⚠️ WARNING: Deletes all data!
 make setup
 ```
 
-**SSL certificate expired:**
-```bash
-# Renew certificate (Let's Encrypt)
-sudo certbot renew
-
-# Copy renewed certificate
-cp /etc/letsencrypt/live/your-domain.com/fullchain.pem nginx/ssl/monitoring.crt
-cp /etc/letsencrypt/live/your-domain.com/privkey.pem nginx/ssl/monitoring.key
-
-# Restart Nginx
-make restart nginx
-```
 
 ## 📋 Complete Setup Checklist
 
@@ -1377,7 +1230,7 @@ Before deploying to production, ensure you have completed:
 - [ ] Prerequisites installed (Docker, Docker Compose, required tools)
 - [ ] Repository cloned
 - [ ] Scripts made executable (`chmod +x scripts/**/*.sh`)
-- [ ] Directories created (`nginx/ssl`, `nginx/auth`, `backups/grafana`)
+- [ ] Directories created (`backups/grafana`)
 - [ ] Permissions set correctly
 
 ### Configuration
@@ -1385,8 +1238,8 @@ Before deploying to production, ensure you have completed:
 - [ ] All `your_*` placeholders replaced with actual values
 - [ ] Strong passwords set (minimum 32 characters)
 - [ ] Domain name configured
-- [ ] SSL certificates obtained and placed in `nginx/ssl/`
-- [ ] Basic Authentication configured (`make setup-auth`)
+- [ ] Traefik configured with SSL certificates
+- [ ] Traefik configured with authentication middleware
 - [ ] Prometheus targets configured (`make setup-prometheus`)
 - [ ] Telegram bot configured (`make setup-telegram`)
 - [ ] Docker Secrets configured (optional but recommended)
@@ -1405,7 +1258,162 @@ Before deploying to production, ensure you have completed:
 - [ ] Access URLs working
 - [ ] Telegram alerts tested (`make test-alert`)
 
-**For detailed checklist, see `PRODUCTION_CHECKLIST.md`**
+## 📋 Production Deployment Checklist
+
+Before deploying to production, complete this checklist:
+
+### 🔐 Security Configuration
+
+- [ ] **Change all default passwords**
+  - [ ] Grafana admin password (set `GRAFANA_ADMIN_PASSWORD` in `.env`)
+  - [ ] PostgreSQL password (set `POSTGRES_PASSWORD` in `.env`)
+  - [ ] Redis password (set `REDIS_PASSWORD` in `.env`)
+
+- [ ] **Traefik Configuration**
+  - [ ] SSL certificates configured in Traefik
+  - [ ] Authentication middleware configured (Basic Auth or other)
+  - [ ] Security headers configured via Traefik middleware
+  - [ ] Rate limiting configured via Traefik middleware
+
+- [ ] **Docker Secrets (Recommended)**
+  - [ ] Docker Swarm initialized (run `make setup-secrets`)
+  - [ ] All sensitive credentials stored as Docker secrets
+  - [ ] `docker-compose.secrets.yml` created from example
+
+### 🌐 Network & Domain Configuration
+
+- [ ] **Domain Configuration**
+  - [ ] Domain name updated (run `make setup-domain your-domain.com`)
+  - [ ] DNS records point to server IP
+  - [ ] Domain updated in:
+    - [ ] `docker-compose.yml` (external URLs)
+    - [ ] `.env` file (GRAFANA_ROOT_URL, PROMETHEUS_EXTERNAL_URL, ALERTMANAGER_EXTERNAL_URL)
+
+- [ ] **Firewall Configuration**
+  - [ ] Port 80 (HTTP) open
+  - [ ] Port 443 (HTTPS) open
+  - [ ] Other ports blocked or restricted
+
+- [ ] **Prometheus Targets**
+  - [ ] API host configured (update `API_HOST` and `API_PORT` in `.env`)
+  - [ ] Gateway host configured (update `GATEWAY_HOST` and `GATEWAY_PORT` in `.env`)
+  - [ ] Run `make setup-prometheus` to update Prometheus config
+  - [ ] Verify targets are reachable: `make targets`
+
+### 📝 Environment Variables
+
+- [ ] **`.env` file configured**
+  - [ ] Copy `.env.example` to `.env`
+  - [ ] All `your_*` placeholders replaced with actual values
+  - [ ] Database credentials configured
+  - [ ] Redis credentials configured
+  - [ ] Telegram bot configured (run `make setup-telegram`)
+  - [ ] External URLs configured with your domain
+
+- [ ] **Validate environment**
+  - [ ] Run `make validate` to check all required variables
+
+### 🚀 Deployment
+
+- [ ] **Pre-deployment checks**
+  - [ ] All services stopped (if upgrading)
+  - [ ] Backup existing data (if upgrading)
+  - [ ] Disk space sufficient (minimum 50GB free)
+
+- [ ] **Deploy services**
+  - [ ] Run `make setup` for complete setup OR
+  - [ ] Run individual setup steps:
+    - [ ] `make setup-secrets` (optional)
+    - [ ] `make setup-domain your-domain.com`
+    - [ ] `make setup-prometheus`
+    - [ ] `make setup-telegram`
+  - [ ] Run `make deploy`
+
+- [ ] **Post-deployment verification**
+  - [ ] Check service status: `make status`
+  - [ ] Run health check: `make health`
+  - [ ] Test access URLs: `make show-urls`
+  - [ ] Test Telegram alerts: `make test-alert`
+  - [ ] Verify Prometheus targets: `make targets`
+  - [ ] Check for active alerts: `make alerts`
+
+### 🔍 Monitoring & Alerts
+
+- [ ] **Grafana**
+  - [ ] Access Grafana: `https://your-domain.com/grafana/`
+  - [ ] Login with admin credentials
+  - [ ] Verify dashboards are loaded
+  - [ ] Check data sources are connected
+
+- [ ] **Prometheus**
+  - [ ] Access Prometheus: `https://your-domain.com/prometheus/`
+  - [ ] Verify all targets are UP
+  - [ ] Check metrics are being collected
+
+- [ ] **Alertmanager**
+  - [ ] Access Alertmanager: `https://your-domain.com/alertmanager/`
+  - [ ] Verify webhook receiver is configured
+  - [ ] Test alert routing
+
+- [ ] **Telegram Integration**
+  - [ ] Bot token configured
+  - [ ] Chat ID configured
+  - [ ] Test alert sent successfully: `make test-alert`
+  - [ ] Verify alerts are received in Telegram
+
+### 🛡️ Security Hardening
+
+- [ ] **File Permissions**
+  - [ ] `.env` file: `chmod 600 .env`
+
+- [ ] **Git Security**
+  - [ ] Verify `.env` is in `.gitignore`
+  - [ ] No sensitive data committed to git
+
+- [ ] **Container Security**
+  - [ ] All services run as non-root users
+  - [ ] Read-only filesystems where applicable
+  - [ ] Resource limits configured
+  - [ ] Security options enabled (`no-new-privileges`)
+
+### 📊 Maintenance Setup
+
+- [ ] **Backup Strategy**
+  - [ ] Grafana backup configured: `make backup`
+  - [ ] Backup schedule planned
+  - [ ] Backup location secured
+
+- [ ] **Log Management**
+  - [ ] Log rotation configured
+  - [ ] Log retention policy defined
+  - [ ] Log monitoring setup
+
+- [ ] **Update Strategy**
+  - [ ] Update process documented
+  - [ ] Rollback plan prepared
+  - [ ] Testing procedure defined
+
+### ✅ Final Verification
+
+- [ ] All services running: `make status`
+- [ ] All health checks passing: `make health`
+- [ ] No critical alerts: `make alerts`
+- [ ] SSL certificate valid (not expired)
+- [ ] Domain accessible via HTTPS
+- [ ] Authentication working via Traefik
+- [ ] Telegram alerts working
+- [ ] Prometheus collecting metrics
+- [ ] Grafana dashboards functional
+
+### 🚨 Important Notes
+
+1. **Never commit `.env` file** - It contains sensitive credentials
+2. **Change default passwords** - Especially Grafana admin password
+3. **Use Docker Secrets for production** - More secure than environment variables
+4. **Keep SSL certificates updated** - Ensure Traefik has valid SSL certificates
+5. **Monitor disk space** - Prometheus data grows over time
+6. **Regular backups** - Backup Grafana dashboards and Prometheus data
+7. **Test alerts** - Verify Telegram integration before relying on it
 
 ## 📄 License
 

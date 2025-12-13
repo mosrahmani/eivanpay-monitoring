@@ -81,7 +81,7 @@ scrape_configs:
           environment: 'production'
     # API Key authentication
     # Note: Prometheus scrape_config does not support http_client_config/headers directly
-    # Workaround: Use Nginx reverse proxy to add X-API-Key header, or use IP whitelisting
+    # Authentication should be handled at API level via IP whitelist or Traefik middleware
     # For now, headers are commented out - authentication should be handled at API level via IP whitelist
     # http_client_config:
     #   headers:
@@ -101,7 +101,7 @@ scrape_configs:
           environment: 'production'
     # API Key authentication
     # Note: Prometheus scrape_config does not support http_client_config/headers directly
-    # Workaround: Use Nginx reverse proxy to add X-API-Key header, or use IP whitelisting
+    # Authentication should be handled at API level via IP whitelist or Traefik middleware
     # For now, headers are commented out - authentication should be handled at API level via IP whitelist
     # http_client_config:
     #   headers:
@@ -121,18 +121,9 @@ scrape_configs:
           environment: 'production'
     # API Key authentication
     # Note: Prometheus scrape_config does not support http_client_config/headers directly
-    # Workaround: Use Nginx reverse proxy to add X-API-Key header, or use IP whitelisting
+    # Authentication should be handled at API level via IP whitelist or Traefik middleware
     # For now, headers are commented out - authentication should be handled at API level via IP whitelist
     # http_client_config:
     #   headers:
     #     X-API-Key: '${PROMETHEUS_API_KEY}'
 
-  # Nginx - Stub Status (if accessible)
-  - job_name: 'nginx'
-    metrics_path: '/nginx-status'
-    static_configs:
-      - targets: ['${NGINX_HOST}:${NGINX_PORT}']
-        labels:
-          instance: 'nginx'
-          service: 'nginx'
-    # Note: Nginx stub_status module must be enabled

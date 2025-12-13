@@ -23,8 +23,6 @@ API_HOST=${API_HOST:-your_api_host}
 API_PORT=${API_PORT:-3000}
 GATEWAY_HOST=${GATEWAY_HOST:-your_gateway_host}
 GATEWAY_PORT=${GATEWAY_PORT:-3003}
-NGINX_HOST=${NGINX_HOST:-your_nginx_host}
-NGINX_PORT=${NGINX_PORT:-80}
 PWA_API_HOST=${PWA_API_HOST:-your_pwa_api_host}
 PWA_API_PORT=${PWA_API_PORT:-3002}
 PROMETHEUS_API_KEY=${PROMETHEUS_API_KEY:-your_prometheus_api_key_here}
@@ -44,7 +42,7 @@ fi
 if command_exists envsubst; then
     log_info "Using envsubst to generate configuration from template..."
     # Export variables for envsubst
-    export API_HOST API_PORT GATEWAY_HOST GATEWAY_PORT NGINX_HOST NGINX_PORT
+    export API_HOST API_PORT GATEWAY_HOST GATEWAY_PORT
     export PWA_API_HOST PWA_API_PORT PROMETHEUS_API_KEY
     export POSTGRES_EXPORTER_ENDPOINT REDIS_EXPORTER_ENDPOINT
     envsubst < "$SCRIPT_DIR/prometheus/prometheus.yml.template" > "$SCRIPT_DIR/prometheus/prometheus.yml"
@@ -58,8 +56,6 @@ else
     sed -i.bak "s|\${API_PORT}|${API_PORT}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
     sed -i.bak "s|\${GATEWAY_HOST}|${GATEWAY_HOST}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
     sed -i.bak "s|\${GATEWAY_PORT}|${GATEWAY_PORT}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
-    sed -i.bak "s|\${NGINX_HOST}|${NGINX_HOST}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
-    sed -i.bak "s|\${NGINX_PORT}|${NGINX_PORT}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
     sed -i.bak "s|\${PWA_API_HOST}|${PWA_API_HOST}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
     sed -i.bak "s|\${PWA_API_PORT}|${PWA_API_PORT}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
     sed -i.bak "s|\${PROMETHEUS_API_KEY}|${PROMETHEUS_API_KEY}|g" "$SCRIPT_DIR/prometheus/prometheus.yml"
@@ -75,7 +71,6 @@ echo ""
 log_info "Current targets:"
 echo "   - API: ${API_HOST}:${API_PORT}"
 echo "   - Gateway: ${GATEWAY_HOST}:${GATEWAY_PORT}"
-echo "   - Nginx: ${NGINX_HOST}:${NGINX_PORT}"
 if [ "$PWA_API_HOST" != "your_pwa_api_host" ]; then
   echo "   - PWA API: ${PWA_API_HOST}:${PWA_API_PORT}"
 fi

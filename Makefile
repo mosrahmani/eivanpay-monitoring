@@ -5,7 +5,7 @@
 COMPOSE_FILE ?= docker-compose.yml
 COMPOSE_SECRETS_FILE ?= docker-compose.secrets.yml
 COMPOSE_CMD = docker compose
-MONITORING_SERVICES = prometheus grafana alertmanager nginx node-exporter cadvisor postgres-exporter redis-exporter telegram-webhook
+MONITORING_SERVICES = prometheus grafana alertmanager node-exporter cadvisor postgres-exporter redis-exporter telegram-webhook
 
 # Colors
 BLUE := \033[0;34m
@@ -64,14 +64,6 @@ help: ## Show complete command help
 setup: ## Complete production setup (SSL, Auth, Secrets, Domain, Deploy) - Setup
 	@chmod +x scripts/production/setup-production.sh 2>/dev/null || true
 	@./scripts/production/setup-production.sh
-
-setup-ssl: ## Configure SSL certificates - Setup
-	@chmod +x scripts/production/setup-ssl.sh 2>/dev/null || true
-	@./scripts/production/setup-ssl.sh
-
-setup-auth: ## Configure Nginx Basic Authentication - Setup
-	@chmod +x scripts/production/setup-nginx-auth.sh 2>/dev/null || true
-	@./scripts/production/setup-nginx-auth.sh
 
 setup-secrets: ## Configure Docker Secrets - Setup
 	@chmod +x scripts/production/setup-secrets.sh 2>/dev/null || true
@@ -188,10 +180,9 @@ health-quick: ## Quick health check - Health
 	@echo "$(BLUE)Quick Health Check:$(NC)"
 	@$(COMPOSE_CMD) ps --format "table {{.Name}}\t{{.Status}}\t{{.Health}}"
 	@echo ""
-	@DOMAIN=$$(grep -E '^[^#]*server_name [^;]+;' nginx/conf.d/*.conf 2>/dev/null | head -1 | sed 's/.*server_name \([^;]*\);.*/\1/' | tr -d ' ' || echo ""); \
+	@DOMAIN=$$(grep -E 'monitoring\.eivanpay\.com' docker-compose.yml 2>/dev/null | head -1 | sed 's/.*`\([^`]*\)`.*/\1/' | tr -d ' ' || echo ""); \
 	if [ -n "$$DOMAIN" ] && [ "$$DOMAIN" != "monitoring.example.com" ]; then \
 		echo "$(BLUE)Testing HTTPS endpoints:$(NC)"; \
-		curl -sfk "https://$$DOMAIN/health" > /dev/null 2>&1 && echo "$(GREEN)✓ Nginx: Healthy$(NC)" || echo "$(RED)✗ Nginx: Unhealthy$(NC)"; \
 		curl -sfk "https://$$DOMAIN/grafana/api/health" > /dev/null 2>&1 && echo "$(GREEN)✓ Grafana: Healthy$(NC)" || echo "$(RED)✗ Grafana: Unhealthy$(NC)"; \
 		curl -sfk "https://$$DOMAIN/prometheus/-/healthy" > /dev/null 2>&1 && echo "$(GREEN)✓ Prometheus: Healthy$(NC)" || echo "$(RED)✗ Prometheus: Unhealthy$(NC)"; \
 		curl -sfk "https://$$DOMAIN/alertmanager/-/healthy" > /dev/null 2>&1 && echo "$(GREEN)✓ Alertmanager: Healthy$(NC)" || echo "$(RED)✗ Alertmanager: Unhealthy$(NC)"; \
@@ -200,7 +191,7 @@ health-quick: ## Quick health check - Health
 targets: ## Show Prometheus targets status - Monitor
 	@echo "$(BLUE)Prometheus Targets Status:$(NC)"
 	@echo ""
-	@DOMAIN=$$(grep -E '^[^#]*server_name [^;]+;' nginx/conf.d/*.conf 2>/dev/null | head -1 | sed 's/.*server_name \([^;]*\);.*/\1/' | tr -d ' ' || echo ""); \
+	@DOMAIN=$$(grep -E 'monitoring\.eivanpay\.com' docker-compose.yml 2>/dev/null | head -1 | sed 's/.*`\([^`]*\)`.*/\1/' | tr -d ' ' || echo ""); \
 	if [ -n "$$DOMAIN" ] && [ "$$DOMAIN" != "monitoring.example.com" ]; then \
 		curl -sfk "https://$$DOMAIN/prometheus/api/v1/targets" | python3 -m json.tool 2>/dev/null || \
 		curl -sfk "https://$$DOMAIN/prometheus/api/v1/targets" | jq '.' 2>/dev/null || \
@@ -213,7 +204,7 @@ targets: ## Show Prometheus targets status - Monitor
 
 reload: ## Reload Prometheus configuration - Monitor
 	@echo "$(BLUE)Reloading Prometheus configuration...$(NC)"
-	@DOMAIN=$$(grep -E '^[^#]*server_name [^;]+;' nginx/conf.d/*.conf 2>/dev/null | head -1 | sed 's/.*server_name \([^;]*\);.*/\1/' | tr -d ' ' || echo ""); \
+	@DOMAIN=$$(grep -E 'monitoring\.eivanpay\.com' docker-compose.yml 2>/dev/null | head -1 | sed 's/.*`\([^`]*\)`.*/\1/' | tr -d ' ' || echo ""); \
 	if [ -n "$$DOMAIN" ] && [ "$$DOMAIN" != "monitoring.example.com" ]; then \
 		curl -X POST -k "https://$$DOMAIN/prometheus/-/reload" 2>/dev/null && \
 		echo "$(GREEN)✅ Prometheus configuration reloaded!$(NC)" || \
@@ -237,7 +228,7 @@ rules: ## Validate Prometheus alert rules - Monitor
 metrics: ## Show available metrics endpoints - Monitor
 	@echo "$(BLUE)Available Metrics Endpoints:$(NC)"
 	@echo ""
-	@DOMAIN=$$(grep -E '^[^#]*server_name [^;]+;' nginx/conf.d/*.conf 2>/dev/null | head -1 | sed 's/.*server_name \([^;]*\);.*/\1/' | tr -d ' ' || echo "monitoring.example.com"); \
+	@DOMAIN=$$(grep -E 'monitoring\.eivanpay\.com' docker-compose.yml 2>/dev/null | head -1 | sed 's/.*`\([^`]*\)`.*/\1/' | tr -d ' ' || echo "monitoring.example.com"); \
 	echo "$(GREEN)Prometheus:$(NC)    https://$$DOMAIN/prometheus/metrics"; \
 	echo "$(GREEN)Node Exporter:$(NC) http://localhost:9100/metrics"; \
 	echo "$(GREEN)cAdvisor:$(NC)      http://localhost:8080/metrics"; \
@@ -252,16 +243,15 @@ metrics: ## Show available metrics endpoints - Monitor
 show-urls: ## Show access URLs for all services - Access
 	@echo "$(BLUE)Monitoring Stack Access URLs (Production):$(NC)"
 	@echo ""
-	@DOMAIN=$$(grep -E '^[^#]*server_name [^;]+;' nginx/conf.d/*.conf 2>/dev/null | head -1 | sed 's/.*server_name \([^;]*\);.*/\1/' | tr -d ' ' || echo "monitoring.example.com"); \
+	@DOMAIN=$$(grep -E 'monitoring\.eivanpay\.com' docker-compose.yml 2>/dev/null | head -1 | sed 's/.*`\([^`]*\)`.*/\1/' | tr -d ' ' || echo "monitoring.example.com"); \
 	echo "$(GREEN)Grafana:$(NC)      https://$$DOMAIN/grafana/"; \
 	echo "$(GREEN)Prometheus:$(NC)    https://$$DOMAIN/prometheus/"; \
 	echo "$(GREEN)Alertmanager:$(NC) https://$$DOMAIN/alertmanager/"; \
 	echo ""; \
-	echo "$(YELLOW)Note: All services require Basic Authentication$(NC)"; \
-	echo "$(YELLOW)Note: Access via Nginx reverse proxy only$(NC)"
+	echo "$(YELLOW)Note: All services are accessible via Traefik reverse proxy$(NC)"
 
 show-domain: ## Show configured domain - Access
-	@DOMAIN=$$(grep -E '^[^#]*server_name [^;]+;' nginx/conf.d/*.conf 2>/dev/null | head -1 | sed 's/.*server_name \([^;]*\);.*/\1/' | tr -d ' ' || echo "Not configured"); \
+	@DOMAIN=$$(grep -E 'monitoring\.eivanpay\.com' docker-compose.yml 2>/dev/null | head -1 | sed 's/.*`\([^`]*\)`.*/\1/' | tr -d ' ' || echo "Not configured"); \
 	echo "$(BLUE)Configured Domain:$(NC) $$DOMAIN"
 
 # ============================================================================
@@ -271,7 +261,7 @@ show-domain: ## Show configured domain - Access
 alerts: ## Show active Prometheus alerts - Alert
 	@echo "$(BLUE)Active Prometheus Alerts:$(NC)"
 	@echo ""
-	@DOMAIN=$$(grep -E '^[^#]*server_name [^;]+;' nginx/conf.d/*.conf 2>/dev/null | head -1 | sed 's/.*server_name \([^;]*\);.*/\1/' | tr -d ' ' || echo ""); \
+	@DOMAIN=$$(grep -E 'monitoring\.eivanpay\.com' docker-compose.yml 2>/dev/null | head -1 | sed 's/.*`\([^`]*\)`.*/\1/' | tr -d ' ' || echo ""); \
 	if [ -n "$$DOMAIN" ] && [ "$$DOMAIN" != "monitoring.example.com" ]; then \
 		curl -sfk "https://$$DOMAIN/prometheus/api/v1/alerts" | python3 -m json.tool 2>/dev/null || \
 		curl -sfk "https://$$DOMAIN/prometheus/api/v1/alerts" | jq '.data.alerts[] | {alertname: .labels.alertname, state: .state, severity: .labels.severity}' 2>/dev/null || \

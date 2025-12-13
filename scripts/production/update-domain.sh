@@ -20,12 +20,6 @@ OLD_DOMAIN="monitoring.example.com"
 log_step "Updating Domain Configuration"
 log_info "Updating domain from '$OLD_DOMAIN' to '$DOMAIN'..."
 
-# Update Nginx configs
-if [ -d "$SCRIPT_DIR/nginx/conf.d" ]; then
-    find "$SCRIPT_DIR/nginx/conf.d" -type f -name "*.conf" -exec sed -i.bak "s|$OLD_DOMAIN|$DOMAIN|g" {} \;
-    log_success "Nginx configs updated"
-fi
-
 # Update docker-compose.yml
 if [ -f "$SCRIPT_DIR/docker-compose.yml" ]; then
     sed -i.bak "s|$OLD_DOMAIN|$DOMAIN|g" "$SCRIPT_DIR/docker-compose.yml"
@@ -40,7 +34,7 @@ log_success "Domain updated to: $DOMAIN"
 echo ""
 log_warning "Don't forget to:"
 echo "  1. Update DNS records to point to this server"
-echo "  2. Update SSL certificates if needed"
+echo "  2. Configure Traefik with SSL certificates if needed"
 echo "  3. Restart services: make deploy"
 
 

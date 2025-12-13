@@ -3,23 +3,12 @@
 .env.*
 !.env.example
 
-# SSL Certificates and Keys
-nginx/ssl/*.crt
-nginx/ssl/*.key
-nginx/ssl/*.pem
-!nginx/ssl/.gitkeep
-
-# Authentication files
-nginx/auth/*.htpasswd
-!nginx/auth/.gitkeep
-
 # Docker secrets
 docker-compose.secrets.yml
 
 # Logs
 *.log
 logs/
-nginx_logs/
 
 # Data directories (will be volumes)
 prometheus_data/

@@ -1,65 +1,13 @@
-# Docker Compose v2 format (version field is obsolete)
-services:
-  # Nginx Reverse Proxy - Production Access
-  # Direct access on ports 80/443 for subdomain monitoring.eivanpay.com
-  nginx:
-    image: nginx:1.25-alpine
-    container_name: monitoring-nginx
-    restart: unless-stopped
-    ports:
-      - "8080:80"     # HTTP - Internal port (routed by host nginx)
-      - "8445:443"    # HTTPS - Internal port (routed by host nginx) - changed from 8443 to avoid conflict with GitLab SSH
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-      - ./nginx/auth:/etc/nginx/auth:ro
-      - nginx_logs:/var/log/nginx
-    depends_on:
-      - grafana
-      - prometheus
-      - alertmanager
-      - cadvisor
-    networks:
-      - monitoring-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    security_opt:
-      - no-new-privileges:true
-    labels:
-      - "com.eivan-pay.service=monitoring"
-      - "com.eivan-pay.component=nginx"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
-        reservations:
-          cpus: '0.1'
-          memory: 64M
+version: "3.9"
 
-  # Prometheus - Metrics Collection
+services:
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     restart: unless-stopped
     user: "nobody"
-    # Expose port for debugging and internal access
     expose:
       - "9090"
-    security_opt:
-      - no-new-privileges:true
-    read_only: true
-    tmpfs:
-      - /tmp
-      - /var/run
-    labels:
-      - "com.eivan-pay.service=monitoring"
-      - "com.eivan-pay.component=prometheus"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus/rules:/etc/prometheus/rules:ro
@@ -67,14 +15,41 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=90d'  # Production: Longer retention
-      - '--storage.tsdb.retention.size=100GB'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--storage.tsdb.retention.time=90d'
       - '--web.enable-lifecycle'
       - '--web.enable-admin-api'
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - '--web.external-url=https://monitoring.eivanpay.com/prometheus/'
+      - '--web.route-prefix=/prometheus'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=eivan-pay-monitoring"
+
+      # Prometheus Main Router
+      - "traefik.http.routers.prometheus.rule=Host(`monitoring.eivanpay.com`) && PathPrefix(`/prometheus/`)"
+      - "traefik.http.routers.prometheus.entrypoints=websecure"
+      - "traefik.http.routers.prometheus.tls=true"
+      - "traefik.http.routers.prometheus.service=prometheus"
+      - "traefik.http.routers.prometheus.middlewares=security-headers@file,strip-prefix-prometheus@file,rate-limit-monitoring@file,compress@file"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+      - "traefik.http.routers.prometheus.priority=10"
+
+      # Prometheus API (internal only)
+      - "traefik.http.routers.prometheus-api.rule=Host(`monitoring.eivanpay.com`) && PathPrefix(`/prometheus/api/`)"
+      - "traefik.http.routers.prometheus-api.entrypoints=websecure"
+      - "traefik.http.routers.prometheus-api.tls=true"
+      - "traefik.http.routers.prometheus-api.service=prometheus"
+      - "traefik.http.routers.prometheus-api.middlewares=security-headers@file,strip-prefix-prometheus@file,metrics-whitelist@file"
+      - "traefik.http.services.prometheus-api.loadbalancer.server.port=9090"
+      - "traefik.http.routers.prometheus-api.priority=10"
+
+      # Redirect /prometheus -> /prometheus/ (no rate limit, high priority)
+      - "traefik.http.routers.prometheus-redirect.rule=Host(`monitoring.eivanpay.com`) && Path(`/prometheus`)"
+      - "traefik.http.routers.prometheus-redirect.entrypoints=websecure"
+      - "traefik.http.routers.prometheus-redirect.tls=true"
+      - "traefik.http.routers.prometheus-redirect.service=api@internal"
+      - "traefik.http.routers.prometheus-redirect.middlewares=redirect-to-prometheus-slash@file"
+      - "traefik.http.routers.prometheus-redirect.priority=15"
+
     networks:
       - monitoring-network
     healthcheck:
@@ -82,102 +57,88 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 4G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
-  # Grafana - Visualization
   grafana:
     image: grafana/grafana:10.2.0
     container_name: grafana
     restart: unless-stopped
-    user: "472"
-    # Expose port for internal access
     expose:
       - "3000"
-    security_opt:
-      - no-new-privileges:true
-    labels:
-      - "com.eivan-pay.service=monitoring"
-      - "com.eivan-pay.component=grafana"
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-https://monitoring.eivanpay.com/grafana/}
+      - GF_SERVER_ROOT_URL=https://monitoring.eivanpay.com/grafana/
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
-      - GF_INSTALL_PLUGINS=grafana-piechart-panel
-      # Disable anonymous access - require login
+      - GF_APP_MODE=production
+      - GF_SERVER_ENABLE_GZIP=true
+      - GF_USERS_ALLOW_SIGN_UP=false
       - GF_AUTH_ANONYMOUS_ENABLED=false
-      - GF_AUTH_DISABLE_LOGIN_FORM=false
-      - GF_AUTH_LOGIN_FORM_ENABLED=true
-      - GF_AUTH_SHOW_LOGIN_FORM=true
-      - GF_AUTH_SIGNOUT_REDIRECT_URL=/grafana/login
-      - GF_AUTH_LOGIN_COOKIE_NAME=grafana_session
-      - GF_AUTH_DISABLE_SIGNOUT_MENU=false
-      - GF_SECURITY_DISABLE_GRAVATAR=true
-      - GF_ANALYTICS_REPORTING_ENABLED=false
-      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
-      - GF_LOG_LEVEL=warn
-      - GF_SECURITY_COOKIE_SECURE=true
-      - GF_SECURITY_COOKIE_SAMESITE=strict
-      - GF_SECURITY_STRICT_TRANSPORT_SECURITY=true
-      - GF_SECURITY_STRICT_TRANSPORT_SECURITY_MAX_AGE_SECONDS=31536000
-      - GF_SECURITY_STRICT_TRANSPORT_SECURITY_PRELOAD=true
-      - GF_SECURITY_STRICT_TRANSPORT_SECURITY_SUBDOMAINS=true
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=eivan-pay-monitoring"
+
+      # Root Redirect Router - / -> /grafana/ (no rate limit, highest priority)
+      - "traefik.http.routers.grafana-root-redirect.rule=Host(`monitoring.eivanpay.com`) && Path(`/`)"
+      - "traefik.http.routers.grafana-root-redirect.entrypoints=websecure"
+      - "traefik.http.routers.grafana-root-redirect.tls=true"
+      - "traefik.http.routers.grafana-root-redirect.service=grafana"
+      - "traefik.http.routers.grafana-root-redirect.middlewares=redirect-root-to-grafana@file"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "traefik.http.routers.grafana-root-redirect.priority=20"
+
+      # Grafana Redirect Router - /grafana -> /grafana/ (no rate limit, high priority)
+      - "traefik.http.routers.grafana-redirect.rule=Host(`monitoring.eivanpay.com`) && Path(`/grafana`)"
+      - "traefik.http.routers.grafana-redirect.entrypoints=websecure"
+      - "traefik.http.routers.grafana-redirect.tls=true"
+      - "traefik.http.routers.grafana-redirect.service=grafana"
+      - "traefik.http.routers.grafana-redirect.middlewares=redirect-to-grafana-slash@file"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "traefik.http.routers.grafana-redirect.priority=15"
+
+      # Grafana Main Router (without strip-prefix - Grafana handles subpath itself)
+      - "traefik.http.routers.grafana.rule=Host(`monitoring.eivanpay.com`) && PathPrefix(`/grafana`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls=true"
+      - "traefik.http.routers.grafana.service=grafana"
+      - "traefik.http.routers.grafana.middlewares=security-headers@file,rate-limit-monitoring@file,compress@file"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "traefik.http.routers.grafana.priority=10"
+
+
+    networks:
+      - monitoring-network
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./alertmanager/templates:/etc/alertmanager/templates:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=https://monitoring.eivanpay.com/alertmanager/'
+      - '--web.route-prefix=/'
+      - '--cluster.listen-address='
     depends_on:
       - prometheus
     networks:
       - monitoring-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
-  # Node Exporter - System Metrics
   node-exporter:
     image: prom/node-exporter:v1.7.0
     container_name: node-exporter
     restart: unless-stopped
-    # Security: Internal network only, no public exposure needed
-    # Port exposed only for Prometheus scraping
     expose:
       - "9100"
-    security_opt:
-      - no-new-privileges:true
-    labels:
-      - "com.eivan-pay.service=monitoring"
-      - "com.eivan-pay.component=node-exporter"
     command:
       - '--path.procfs=/host/proc'
       - '--path.sysfs=/host/sys'
@@ -188,195 +149,6 @@ services:
       - /:/rootfs:ro
     networks:
       - monitoring-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9100/metrics"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # cAdvisor - Container Metrics
-  # Using Docker Hub image (accessible without VPN in Iran)
-  # Alternative: If Docker Hub is blocked, use registry mirrors:
-  #   - docker.kernel.ir
-  #   - docker.arvancloud.ir
-  # Configure in /etc/docker/daemon.json:
-  #   { "registry-mirrors": ["https://docker.kernel.ir", "https://docker.arvancloud.ir"] }
-  cadvisor:
-    # Using alternative image that supports cgroup v2
-    # google/cadvisor may not be available or may not support cgroup v2
-    # This image is maintained and supports modern cgroup v2 systems
-    image: secureimages/cadvisor:latest
-    container_name: cadvisor
-    restart: unless-stopped
-    # Security: Internal network only
-    expose:
-      - "8080"
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
-      # cgroup v2 support (required for Ubuntu 22.04+)
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
-    # Note: cAdvisor requires privileged mode for container metrics
-    # This is a known limitation, consider alternatives for production
-    privileged: true
-    devices:
-      - /dev/kmsg
-    security_opt:
-      - apparmor:unconfined
-    labels:
-      - "com.eivan-pay.service=monitoring"
-      - "com.eivan-pay.component=cadvisor"
-    networks:
-      - monitoring-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.1'
-          memory: 128M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # PostgreSQL Exporter is now running on the database server
-  # Endpoint: http://188.121.105.218:9187/metrics
-  # No container needed here - metrics are scraped directly from remote server
-
-  # Redis Exporter - Cache Metrics (Temporarily disabled)
-  # redis-exporter:
-  #   image: oliver006/redis_exporter:v1.55.0
-  #   container_name: redis-exporter
-  #   restart: unless-stopped
-  #   # Security: Internal network only
-  #   expose:
-  #     - "9121"
-  #   environment:
-  #     - REDIS_ADDR=${REDIS_HOST:-your_redis_host}:${REDIS_PORT:-6379}
-  #     - REDIS_PASSWORD=${REDIS_PASSWORD}
-  #   security_opt:
-  #     - no-new-privileges:true
-  #   labels:
-  #     - "com.eivan-pay.service=monitoring"
-  #     - "com.eivan-pay.component=redis-exporter"
-  #   networks:
-  #     - monitoring-network
-  #   healthcheck:
-  #     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9121/metrics"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
-
-  # Alertmanager - Alert Management
-  alertmanager:
-    image: prom/alertmanager:latest
-    container_name: alertmanager
-    restart: unless-stopped
-    user: "nobody"
-    # Production: No public ports, access via Nginx only
-    ports: []
-    security_opt:
-      - no-new-privileges:true
-    read_only: true
-    tmpfs:
-      - /tmp
-      - /var/run
-    labels:
-      - "com.eivan-pay.service=monitoring"
-      - "com.eivan-pay.component=alertmanager"
-    env_file:
-      - .env
-    volumes:
-      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
-      - ./alertmanager/templates:/etc/alertmanager/templates:ro
-      - alertmanager_data:/alertmanager
-    command:
-      - '--config.file=/etc/alertmanager/alertmanager.yml'
-      - '--storage.path=/alertmanager'
-      - '--web.external-url=${ALERTMANAGER_EXTERNAL_URL:-https://monitoring.eivanpay.com/alertmanager}'
-      - '--web.route-prefix=/'
-      - '--cluster.listen-address='
-    depends_on:
-      - prometheus
-      - telegram-webhook
-    networks:
-      - monitoring-network
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.1'
-          memory: 128M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # Telegram Webhook - Receives alerts and forwards to Telegram
-  telegram-webhook:
-    build:
-      context: ./alertmanager
-      dockerfile: Dockerfile
-    container_name: telegram-webhook
-    restart: unless-stopped
-    # User is set in Dockerfile (webhook:1000)
-    # Security: Internal network only
-    expose:
-      - "8080"
-      - "9091"  # Prometheus metrics port
-    security_opt:
-      - no-new-privileges:true
-    read_only: true
-    tmpfs:
-      - /tmp
-    environment:
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
-      - HTTP_PROXY=${HTTP_PROXY:-}
-      - HTTPS_PROXY=${HTTPS_PROXY:-${HTTP_PROXY:-}}
-      - PORT=8080
-      - METRICS_PORT=9091
-      - MAX_RETRIES=3
-      - RATE_LIMIT_PER_MINUTE=20
-      - TELEGRAM_TIMEOUT=30
-    labels:
-      - "com.eivan-pay.service=monitoring"
-      - "com.eivan-pay.component=telegram-webhook"
-    networks:
-      - monitoring-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-    deploy:
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 256M
-        reservations:
-          cpus: '0.05'
-          memory: 64M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
 networks:
   monitoring-network:
@@ -385,15 +157,5 @@ networks:
 
 volumes:
   prometheus_data:
-    driver: local
-    name: eivan-pay-prometheus-data
   grafana_data:
-    driver: local
-    name: eivan-pay-grafana-data
   alertmanager_data:
-    driver: local
-    name: eivan-pay-alertmanager-data
-  nginx_logs:
-    driver: local
-    name: eivan-pay-monitoring-nginx-logs
-
