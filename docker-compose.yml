@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   prometheus:
     image: prom/prometheus:latest
@@ -19,7 +17,6 @@ services:
       - '--web.enable-lifecycle'
       - '--web.enable-admin-api'
       - '--web.external-url=https://monitoring.eivanpay.com/prometheus/'
-      - '--web.route-prefix=/prometheus'
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=eivan-pay-monitoring"
@@ -29,7 +26,7 @@ services:
       - "traefik.http.routers.prometheus.entrypoints=websecure"
       - "traefik.http.routers.prometheus.tls=true"
       - "traefik.http.routers.prometheus.service=prometheus"
-      - "traefik.http.routers.prometheus.middlewares=security-headers@file,strip-prefix-prometheus@file,rate-limit-monitoring@file,compress@file"
+      - "traefik.http.routers.prometheus.middlewares=security-headers@file,strip-prefix-prometheus@file,prometheus-basic-auth@file,rate-limit-monitoring@file,compress@file"
       - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
       - "traefik.http.routers.prometheus.priority=10"
 
@@ -104,7 +101,7 @@ services:
       - "traefik.http.routers.grafana.entrypoints=websecure"
       - "traefik.http.routers.grafana.tls=true"
       - "traefik.http.routers.grafana.service=grafana"
-      - "traefik.http.routers.grafana.middlewares=security-headers@file,rate-limit-monitoring@file,compress@file"
+      - "traefik.http.routers.grafana.middlewares=security-headers@file,grafana-basic-auth@file,rate-limit-monitoring@file,compress@file"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
       - "traefik.http.routers.grafana.priority=10"
 
@@ -118,6 +115,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    expose:
+      - "9093"
     volumes:
       - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - ./alertmanager/templates:/etc/alertmanager/templates:ro
@@ -128,6 +127,26 @@ services:
       - '--web.external-url=https://monitoring.eivanpay.com/alertmanager/'
       - '--web.route-prefix=/'
       - '--cluster.listen-address='
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=eivan-pay-monitoring"
+
+      # Alertmanager Main Router
+      - "traefik.http.routers.alertmanager.rule=Host(`monitoring.eivanpay.com`) && PathPrefix(`/alertmanager/`)"
+      - "traefik.http.routers.alertmanager.entrypoints=websecure"
+      - "traefik.http.routers.alertmanager.tls=true"
+      - "traefik.http.routers.alertmanager.service=alertmanager"
+      - "traefik.http.routers.alertmanager.middlewares=security-headers@file,strip-prefix-alertmanager@file,alertmanager-basic-auth@file,rate-limit-monitoring@file,compress@file"
+      - "traefik.http.services.alertmanager.loadbalancer.server.port=9093"
+      - "traefik.http.routers.alertmanager.priority=10"
+
+      # Redirect /alertmanager -> /alertmanager/ (no rate limit, high priority)
+      - "traefik.http.routers.alertmanager-redirect.rule=Host(`monitoring.eivanpay.com`) && Path(`/alertmanager`)"
+      - "traefik.http.routers.alertmanager-redirect.entrypoints=websecure"
+      - "traefik.http.routers.alertmanager-redirect.tls=true"
+      - "traefik.http.routers.alertmanager-redirect.service=api@internal"
+      - "traefik.http.routers.alertmanager-redirect.middlewares=redirect-to-alertmanager-slash@file"
+      - "traefik.http.routers.alertmanager-redirect.priority=15"
     depends_on:
       - prometheus
     networks:
