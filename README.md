@@ -722,6 +722,46 @@ This will guide you through:
 2. Getting your chat ID
 3. Testing the connection
 
+#### Proxy Support for Telegram (Required if Telegram is Filtered)
+
+If Telegram API is blocked or filtered in your region, you can configure a proxy by adding the following to your `.env` file:
+
+```bash
+HTTP_PROXY=http://proxy.example.com:8080
+HTTPS_PROXY=http://proxy.example.com:8080
+```
+
+**Supported Proxy Types:**
+
+The webhook server supports the following proxy protocols:
+
+1. **HTTP Proxy** - `http://proxy.example.com:8080`
+   - Standard HTTP proxy using CONNECT method
+   - Most common proxy type
+   - Example: `HTTP_PROXY=http://proxy.example.com:8080`
+
+2. **HTTPS Proxy** - `https://proxy.example.com:8080`
+   - HTTPS proxy with TLS encryption
+   - More secure than HTTP proxy
+   - Example: `HTTPS_PROXY=https://proxy.example.com:8080`
+
+**Configuration Notes:**
+- The webhook server automatically uses `HTTP_PROXY` or `HTTPS_PROXY` environment variables if set
+- If both are set, `HTTPS_PROXY` takes precedence
+- Both HTTP and HTTPS requests to Telegram API will go through the proxy
+- Leave these variables empty if no proxy is needed
+- The proxy URL format: `http://host:port` or `https://host:port`
+- Supports authentication: `http://username:password@proxy.example.com:8080`
+
+**Not Currently Supported:**
+- SOCKS4/SOCKS5 proxies (socks4://, socks5://)
+- PAC (Proxy Auto-Config) files
+
+After configuring the proxy, restart the telegram-webhook service:
+```bash
+make restart telegram-webhook
+```
+
 ## 📝 Project Structure
 
 ```

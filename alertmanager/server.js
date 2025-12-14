@@ -28,6 +28,21 @@ const getSecret = (envVar, secretFileVar) => {
   return null;
 };
 
+// Helper to get and validate proxy URL
+const getProxyUrl = () => {
+  const httpsProxy = process.env.HTTPS_PROXY?.trim();
+  const httpProxy = process.env.HTTP_PROXY?.trim();
+  
+  // Prefer HTTPS_PROXY over HTTP_PROXY, but both must be non-empty
+  const proxyUrl = (httpsProxy && httpsProxy.length > 0) 
+    ? httpsProxy 
+    : (httpProxy && httpProxy.length > 0) 
+      ? httpProxy 
+      : null;
+  
+  return proxyUrl;
+};
+
 const config = {
   telegram: {
     botToken: getSecret('TELEGRAM_BOT_TOKEN', 'TELEGRAM_BOT_TOKEN_FILE'),
@@ -36,14 +51,18 @@ const config = {
       return this.botToken ? `https://api.telegram.org/bot${this.botToken}` : null;
     },
   },
-  proxy: process.env.HTTP_PROXY || process.env.HTTPS_PROXY || null,
+  proxy: getProxyUrl(),
   retry: { maxAttempts: parseInt(process.env.MAX_RETRIES || '3', 10), baseDelay: 1000 },
   rateLimit: { messagesPerMinute: parseInt(process.env.RATE_LIMIT_PER_MINUTE || '20', 10), windowMs: 60000 },
   server: { port: parseInt(process.env.PORT || '8080', 10), metricsPort: parseInt(process.env.METRICS_PORT || '9091', 10) },
   timeout: parseInt(process.env.TELEGRAM_TIMEOUT || '30', 10) * 1000,
 };
 
-if (config.proxy) console.log(`Using HTTP proxy: ${config.proxy}`);
+if (config.proxy) {
+  console.log(`Using proxy: ${config.proxy}`);
+} else {
+  console.log('No proxy configured - using direct connection');
+}
 
 // ============================================================================
 // Prometheus Metrics
@@ -93,6 +112,7 @@ const httpClient = axios.create({
   ...(config.proxy && {
     httpsAgent: new HttpsProxyAgent(config.proxy),
     httpAgent: new HttpsProxyAgent(config.proxy),
+    proxy: false, // Disable Axios default proxy handling when using custom agents
   }),
 });
 

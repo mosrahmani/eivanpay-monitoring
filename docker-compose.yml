@@ -133,6 +133,37 @@ services:
     networks:
       - monitoring-network
 
+  telegram-webhook:
+    build:
+      context: ./alertmanager
+      dockerfile: Dockerfile
+    container_name: telegram-webhook
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - PORT=${TELEGRAM_PORT:-8080}
+      - METRICS_PORT=${TELEGRAM_METRICS_PORT:-9091}
+      - TELEGRAM_TIMEOUT=${TELEGRAM_TIMEOUT:-30}
+      - MAX_RETRIES=${TELEGRAM_MAX_RETRIES:-3}
+      - RATE_LIMIT_PER_MINUTE=${TELEGRAM_RATE_LIMIT:-20}
+    expose:
+      - "8080"
+      - "9091"
+    depends_on:
+      - alertmanager
+    networks:
+      - monitoring-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   node-exporter:
     image: prom/node-exporter:v1.7.0
     container_name: node-exporter
